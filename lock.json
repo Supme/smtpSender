@@ -1,0 +1,13 @@
+{
+    "memo": "",
+    "projects": [
+        {
+            "name": "golang.org/x/net",
+            "branch": "master",
+            "revision": "a8b9294777976932365dabb6640cf1468d95c70f",
+            "packages": [
+                "proxy"
+            ]
+        }
+    ]
+}

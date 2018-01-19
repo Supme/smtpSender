@@ -26,8 +26,8 @@ type Email struct {
 	toName, toEmail, toDomain string
 	// ResultFunc exec after send emil
 	ResultFunc func(Result)
-	// Data email body data
-	Data io.Reader
+	// DataWriter email body data writer function
+	DataWriter func(io.Writer) error
 }
 
 // Send sending this email
@@ -84,7 +84,7 @@ func (e *Email) send(auth smtp.Auth, host string, client *smtp.Client) error {
 		return err
 	}
 
-	_, err = io.Copy(w, e.Data)
+	err = e.DataWriter(w)
 	if err != nil {
 		return err
 	}

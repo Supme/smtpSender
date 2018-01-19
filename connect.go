@@ -119,14 +119,12 @@ func (c *Connect) newClient(domain string) (client *smtp.Client, err error) {
 					return nil, err
 				}
 			}
-			fmt.Printf("Scheme '%s' Host '%s' IP '%s'\n", u.Scheme, u.Host, ip)
 		}
 		if myGlobalIP, ok := c.mapIP[ip]; ok {
 			ip = myGlobalIP
 		}
 		if c.hostname == "" {
 			name, err := lookup(ip)
-			fmt.Println("MyIp:", ip, name)
 			if err != nil {
 				return nil, err
 			}

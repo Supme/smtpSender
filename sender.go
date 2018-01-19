@@ -36,7 +36,6 @@ func NewEmailPipe(conf ...Config) chan Email {
 			for e := range EmailChan {
 				s.backet <- struct{}{}
 				func(e *Email) {
-					//log.Printf("Send email id: %s from profile with %d stream\n", e.ID, s.conf.Stream)
 					conn := new(Connect)
 					conn.SetHostName(s.conf.Hostname)
 					conn.SetSMTPport(s.conf.Port)

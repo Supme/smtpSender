@@ -30,6 +30,13 @@ type Email struct {
 	DataWriter func(io.Writer) error
 }
 
+// Result struct for return send emailField result
+type Result struct {
+	ID       string
+	Duration time.Duration
+	Err      error
+}
+
 // Send sending this email
 func (e *Email) Send(connect *Connect) {
 	start := time.Now()
@@ -50,11 +57,11 @@ func (e *Email) Send(connect *Connect) {
 	return
 }
 
-var testHookStartTLS func(*tls.Config)
-
 func (e *Email) send(auth smtp.Auth, host string, client *smtp.Client) error {
-	var err error
-
+	var (
+		err error
+		testHookStartTLS func(*tls.Config)
+	)
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		config := &tls.Config{ServerName: e.toDomain, InsecureSkipVerify: true}
 		if testHookStartTLS != nil {
@@ -105,18 +112,25 @@ func (e *Email) to() string {
 	return e.toEmail + "@" + e.toDomain
 }
 
-func (e *Email) parseEmail() {
-	e.fromName, e.fromEmail, e.fromDomain = splitEmail(e.From)
-	e.toName, e.toEmail, e.toDomain = splitEmail(e.To)
+func (e *Email) parseEmail() (err error){
+	e.fromName, e.fromEmail, e.fromDomain, err = splitEmail(e.From)
+	if err != nil {
+		return fmt.Errorf("Field From has %s", err)
+	}
+	e.toName, e.toEmail, e.toDomain, err = splitEmail(e.To)
+	if err != nil {
+		return fmt.Errorf("Field To has %s", err)
+	}
+	return
 }
 
 var (
-	splitEmailFullStringRe = regexp.MustCompile(`(.+)<(.+)@(.+\..{2,8})>`)
-	splitEmailOnlyStringRe = regexp.MustCompile(`<(.+)@(.+\..{2,8})>`)
-	splitEmailRe           = regexp.MustCompile(`(.+)@(.+\..{2,8})`)
+	splitEmailFullStringRe = regexp.MustCompile(`(.+)<(.+)@(.+\..{2,9})>`)
+	splitEmailOnlyStringRe = regexp.MustCompile(`<(.+)@(.+\..{2,9})>`)
+	splitEmailRe           = regexp.MustCompile(`(.+)@(.+\..{2,9})`)
 )
 
-func splitEmail(e string) (name, email, domain string) {
+func splitEmail(e string) (name, email, domain string, err error) {
 	s := strings.TrimSpace(e)
 	if m := splitEmailFullStringRe.FindStringSubmatch(s); m != nil && len(m) == 4 {
 		name = strings.TrimSpace(m[1])
@@ -128,7 +142,8 @@ func splitEmail(e string) (name, email, domain string) {
 	} else if m := splitEmailRe.FindStringSubmatch(s); m != nil && len(m) == 3 {
 		email = strings.ToLower(strings.TrimSpace(m[1]))
 		domain = strings.TrimRight(strings.ToLower(strings.TrimSpace(m[2])), ".")
+	} else {
+		err = fmt.Errorf("bad email format")
 	}
-
 	return
 }

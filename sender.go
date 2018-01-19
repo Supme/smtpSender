@@ -1,16 +1,5 @@
 package smtpSender
 
-import (
-	"time"
-)
-
-// Result struct for return send emailField result
-type Result struct {
-	ID       string
-	Duration time.Duration
-	Err      error
-}
-
 type sender struct {
 	conf   Config
 	backet chan struct{}

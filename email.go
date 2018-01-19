@@ -28,45 +28,25 @@ type Email struct {
 	ResultFunc func(Result)
 	// Data email body data
 	Data io.Reader
-
-	ip       string
-	hostname string
-	portSMTP int
-	// MapIP use for translate local IP to global if NAT
-	// if use Socks server translate IP SOCKS server to real IP
-	MapIP map[string]string
-}
-
-// SetHostName set server hostname for HELO. If left blanc then use resolv name.
-func (e *Email) SetHostName(name string) {
-	e.hostname = name
-}
-
-// SetSMTPport set SMTP server port. Default 25
-func (e *Email) SetSMTPport(port int) {
-	e.portSMTP = port
-}
-
-// SetIP use this IP for send. Default use default interface.
-func (e *Email) SetIP(ip string) {
-	e.ip = ip
 }
 
 // Send sending this email
-func (e *Email) Send() {
+func (e *Email) Send(connect *Connect) {
 	start := time.Now()
-	if e.portSMTP == 0 {
-		e.portSMTP = 25
-	}
 	e.parseEmail()
-	conn, err := e.connect()
+	client, err := connect.newClient(e.toDomain)
 	if err != nil {
-		e.ResultFunc(Result{e.ID, fmt.Errorf("421 %v", err), time.Now().Sub(start)})
+		e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("421 %v", err), Duration: time.Now().Sub(start)})
 		return
 	}
-	//defer conn.Close()
-	err = e.send(nil, "", conn)
-	e.ResultFunc(Result{e.ID, err, time.Now().Sub(start)})
+	defer func() {
+		client.Quit()
+		client.Close()
+	}()
+
+	err = e.send(nil, "", client)
+	e.ResultFunc(Result{ID: e.ID, Err: err, Duration: time.Now().Sub(start)})
+
 	return
 }
 
@@ -75,20 +55,19 @@ var testHookStartTLS func(*tls.Config)
 func (e *Email) send(auth smtp.Auth, host string, client *smtp.Client) error {
 	var err error
 
-	if auth != nil {
-		if ok, _ := client.Extension("STARTTLS"); ok {
-			config := &tls.Config{ServerName: host}
-			if testHookStartTLS != nil {
-				testHookStartTLS(config)
-			}
-			if err = client.StartTLS(config); err != nil {
-				return err
-			}
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		config := &tls.Config{ServerName: e.toDomain, InsecureSkipVerify: true}
+		if testHookStartTLS != nil {
+			testHookStartTLS(config)
 		}
-		if auth != nil {
-			if err = client.Auth(auth); err != nil {
-				return err
-			}
+		if err = client.StartTLS(config); err != nil {
+			return err
+		}
+	}
+
+	if auth != nil {
+		if err = client.Auth(auth); err != nil {
+			return err
 		}
 	}
 
@@ -109,13 +88,11 @@ func (e *Email) send(auth smtp.Auth, host string, client *smtp.Client) error {
 	if err != nil {
 		return err
 	}
-
 	err = w.Close()
 	if err != nil {
 		return err
 	}
 
-	//client.Quit()
 	return err
 
 }
@@ -144,13 +121,13 @@ func splitEmail(e string) (name, email, domain string) {
 	if m := splitEmailFullStringRe.FindStringSubmatch(s); m != nil && len(m) == 4 {
 		name = strings.TrimSpace(m[1])
 		email = strings.ToLower(strings.TrimSpace(m[2]))
-		domain = strings.ToLower(strings.TrimSpace(m[3]))
+		domain = strings.TrimRight(strings.ToLower(strings.TrimSpace(m[3])), ".")
 	} else if m := splitEmailOnlyStringRe.FindStringSubmatch(s); m != nil && len(m) == 3 {
 		email = strings.ToLower(strings.TrimSpace(m[1]))
-		domain = strings.ToLower(strings.TrimSpace(m[2]))
+		domain = strings.TrimRight(strings.ToLower(strings.TrimSpace(m[2])), ".")
 	} else if m := splitEmailRe.FindStringSubmatch(s); m != nil && len(m) == 3 {
 		email = strings.ToLower(strings.TrimSpace(m[1]))
-		domain = strings.ToLower(strings.TrimSpace(m[2]))
+		domain = strings.TrimRight(strings.ToLower(strings.TrimSpace(m[2])), ".")
 	}
 
 	return

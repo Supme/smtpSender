@@ -7,8 +7,8 @@ import (
 // Result struct for return send emailField result
 type Result struct {
 	ID       string
-	Err      error
 	Duration time.Duration
+	Err      error
 }
 
 type sender struct {
@@ -19,14 +19,14 @@ type sender struct {
 // Config profile for sender pool
 type Config struct {
 	Hostname string
-	IP       string
+	Iface    string
 	Port     int
 	Stream   int
-	MapIP map[string]string
+	MapIP    map[string]string
 }
 
-// NewEmailChan return new stream sender
-func NewEmailChan(conf ...Config) chan Email {
+// NewEmailPipe return new stream sender
+func NewEmailPipe(conf ...Config) chan Email {
 	EmailChan := make(chan Email)
 	for _, c := range conf {
 		s := new(sender)
@@ -37,11 +37,12 @@ func NewEmailChan(conf ...Config) chan Email {
 				s.backet <- struct{}{}
 				func(e *Email) {
 					//log.Printf("Send email id: %s from profile with %d stream\n", e.ID, s.conf.Stream)
-					e.SetHostName(s.conf.Hostname)
-					e.SetSMTPport(s.conf.Port)
-					e.SetIP(s.conf.IP)
-					e.MapIP = s.conf.MapIP
-					e.Send()
+					conn := new(Connect)
+					conn.SetHostName(s.conf.Hostname)
+					conn.SetSMTPport(s.conf.Port)
+					conn.SetIface(s.conf.Iface)
+					conn.mapIP = s.conf.MapIP
+					e.Send(conn)
 					_ = <-s.backet
 				}(&e)
 			}

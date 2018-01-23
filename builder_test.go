@@ -18,15 +18,16 @@ func TestBuilder(t *testing.T) {
 	bldr.From("Вася", "vasya@mail.ru")
 	bldr.To("Петя", "petya@mail.ru")
 	bldr.Header("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	//bldr.TextPlain(textPlain)
-	bldr.TextHtmlWithRelated(textHTML)
+	bldr.TextPlain(textPlain)
+	bldr.TextHtmlWithRelated(textHTML, "./sender.go", "./email.go")
+	bldr.Attachment("./connect.go")
 	w := &bytes.Buffer{}
 	email := bldr.Render("Id-123", func(Result){})
 	err := email.Writer(w)
 	if err != nil {
 		t.Error(err)
 	}
-	print(w.String())
+	//print(w.String())
 }
 
 func BenchmarkBuilder(b *testing.B) {
@@ -36,7 +37,8 @@ func BenchmarkBuilder(b *testing.B) {
 	bldr.To("Петя", "petya@mail.ru")
 	bldr.Header("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
 	bldr.TextPlain(textPlain)
-	bldr.TextHtmlWithRelated(textHTML)
+	bldr.TextHtmlWithRelated(textHTML, "./sender.go", "./email.go")
+	bldr.Attachment("./connect.go")
 	var	err error
 	w := ioutil.Discard
 	for n := 0; n < b.N; n++ {

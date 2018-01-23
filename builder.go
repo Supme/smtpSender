@@ -8,6 +8,9 @@ import (
 	"mime/quotedprintable"
 	"os"
 	"time"
+	"path/filepath"
+	"fmt"
+	"net/http"
 )
 
 type Builder struct {
@@ -31,7 +34,7 @@ func (m *marker) new() {
 	en := base64.StdEncoding // or URLEncoding
 	d := make([]byte, en.EncodedLen(len(b)))
 	en.Encode(d, b)
-	*m = []byte("--_" + string(d) + "_")
+	*m = []byte("--" + string(d))
 }
 
 func (m *marker) delemiter() []byte {
@@ -98,6 +101,13 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 			}
 		}
 
+		// Attachments
+		if len(c.attachments) != 0 {
+			err = c.writeAttachment(w)
+			if err != nil {
+				return
+			}
+		}
 
 		if c.markerGlobal.isset() {
 			_, err = w.Write(c.markerGlobal.finish())
@@ -153,7 +163,7 @@ func (c *Builder) writeTextHTML(w io.Writer) (err error) {
 	}
 	if len(c.textHTMLRelated) != 0 {
 		c.markerHTML.new()
-		_, err = w.Write([]byte("Content-Type: multipart/related;\r\n\tboundary=\"" + c.markerHTML.string() + "\"\r\n\\r\n"))
+		_, err = w.Write([]byte("Content-Type: multipart/related;\r\n\tboundary=\"" + c.markerHTML.string() + "\"\r\n\r\n"))
 		if err != nil {
 			return
 		}
@@ -167,8 +177,12 @@ func (c *Builder) writeTextHTML(w io.Writer) (err error) {
 		return
 	}
 	dwr := newDelimitWriter(w, []byte{0x0d,0x0a}, 76) // 76 from RFC
-	encoder := base64.NewEncoder(base64.StdEncoding, dwr)
-	_, err = encoder.Write(c.textHTML)
+	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
+	_, err = b64Enc.Write(c.textHTML)
+	if err != nil {
+		return
+	}
+	err = b64Enc.Close()
 	if err != nil {
 		return
 	}
@@ -176,8 +190,53 @@ func (c *Builder) writeTextHTML(w io.Writer) (err error) {
 	if err != nil {
 		return
 	}
+
+	// related files
+	for i := range c.textHTMLRelated {
+		_, err = w.Write([]byte("\r\n"))
+		if err != nil {
+			return
+		}
+		_, err = w.Write(c.markerHTML.delemiter())
+		if err != nil {
+			return
+		}
+
+		err = base64FileWriter(w, c.textHTMLRelated[i])
+		if err != nil {
+			return
+		}
+		_, err = w.Write([]byte("\r\n\r\n"))
+		if err != nil {
+			return
+		}
+	}
+
 	if c.markerHTML.isset() {
 		_, err = w.Write(c.markerHTML.finish())
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (c *Builder) writeAttachment(w io.Writer) (err error) {
+	for i := range c.attachments {
+		_, err = w.Write([]byte("\r\n"))
+		if err != nil {
+			return
+		}
+		_, err = w.Write(c.markerGlobal.delemiter())
+		if err != nil {
+			return
+		}
+
+		err = base64FileWriter(w, c.attachments[i])
+		if err != nil {
+			return
+		}
+		_, err = w.Write([]byte("\r\n\r\n"))
 		if err != nil {
 			return
 		}
@@ -264,22 +323,6 @@ func (c *Builder) Attachment(files ...string) error {
 	return nil
 }
 
-type base64WriteCloser struct {
-	encoder io.WriteCloser
-}
-
-func newBase64Writer(enc *base64.Encoding, w io.Writer) *base64WriteCloser {
-	return &base64WriteCloser{encoder: base64.NewEncoder(enc, w)}
-}
-
-func (w *base64WriteCloser) Write(p []byte) (n int, err error) {
-	return w.encoder.Write(p)
-}
-
-func (w *base64WriteCloser) Close() error {
-	return w.encoder.Close()
-}
-
 type delimitWriter struct {
 	n      int
 	cnt    int
@@ -303,4 +346,60 @@ func (w *delimitWriter) Write(p []byte) (n int, err error) {
 		}
 	}
 	return w.n, err
+}
+//
+//func fileInfo(f *os.File) (name, content string, size int64, err error){
+//	name = filepath.Base(f.Name())
+//	var info os.FileInfo
+//	info, err = f.Stat()
+//	if err != nil {
+//		return
+//	}
+//	size = info.Size()
+//	buf := make([]byte, 512)
+//	_, err = f.Read(buf)
+//	if err != nil  && err != io.EOF{
+//		return
+//	}
+//	content = http.DetectContentType(buf)
+//	_, err = f.Seek(0, 0)
+//	return
+//}
+
+func base64FileWriter(w io.Writer, f *os.File) (err error) {
+	name := filepath.Base(f.Name())
+	var info os.FileInfo
+	info, err = f.Stat()
+	if err != nil {
+		return
+	}
+	size := info.Size()
+	buf := make([]byte, 512)
+	_, err = f.Read(buf)
+	if err != nil  && err != io.EOF{
+		return
+	}
+	content := http.DetectContentType(buf)
+	_, err = f.Seek(0, 0)
+
+	_, err = w.Write([]byte(fmt.Sprintf(
+		"Content-Type: %s;\r\n\tname=\"%s\"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <%s>\r\nContent-Disposition: inline;\r\n\tfilename=\"%s\"; size=%d;\r\n\r\n",
+		content,
+		name,
+		name,
+		name,
+		size)))
+	if err != nil {
+		return
+	}
+
+	dwr := newDelimitWriter(w, []byte{0x0d,0x0a}, 76) // 76 from RFC
+	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
+
+	_, err = io.Copy(b64Enc, f)
+	if err != nil {
+		return err
+	}
+
+	return b64Enc.Close()
 }

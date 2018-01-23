@@ -2,15 +2,15 @@ package smtpSender
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io"
 	"math/rand"
 	"mime"
 	"mime/quotedprintable"
-	"os"
-	"time"
-	"path/filepath"
-	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"time"
 )
 
 type Builder struct {
@@ -23,6 +23,7 @@ type Builder struct {
 	textHTMLRelated []*os.File
 	attachments     []*os.File
 	markerGlobal    marker
+	markerAlt      marker
 	markerHTML      marker
 }
 
@@ -34,15 +35,15 @@ func (m *marker) new() {
 	en := base64.StdEncoding // or URLEncoding
 	d := make([]byte, en.EncodedLen(len(b)))
 	en.Encode(d, b)
-	*m = []byte("--" + string(d))
+	*m = []byte(string(d))
 }
 
 func (m *marker) delemiter() []byte {
-	return []byte(string(*m) +"\r\n")
+	return []byte("--" + string(*m) + "\r\n")
 }
 
 func (m *marker) finish() []byte {
-	return []byte("\r\n" + string(*m) + "--\r\n")
+	return []byte("\r\n--" + string(*m) + "--\r\n")
 }
 
 func (m *marker) isset() bool {
@@ -52,7 +53,6 @@ func (m *marker) isset() bool {
 func (m *marker) string() string {
 	return string(*m)
 }
-
 
 func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 	var email Email
@@ -77,7 +77,7 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 			blkCount++
 		}
 
-		if blkCount > 1 {
+		if len(c.attachments) !=0 {
 			c.markerGlobal.new()
 			_, err = w.Write([]byte("Content-Type: multipart/mixed;\r\n\tboundary=\"" + c.markerGlobal.string() + "\"\r\n"))
 			if err != nil {
@@ -85,16 +85,73 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 			}
 		}
 
-		// Text HTML
-		if len(c.textHTML) != 0 {
+		// Plain text this Text HTML
+		if len(c.textPlain) != 0 && len(c.textHTML) != 0 {
+			if c.markerGlobal.isset() {
+				_, err = w.Write([]byte("\r\n"))
+				if err != nil {
+					return
+				}
+				_, err = w.Write(c.markerGlobal.delemiter())
+				if err != nil {
+					return
+				}
+			}
+			c.markerAlt.new()
+			_, err = w.Write([]byte("Content-Type: multipart/alternative;\r\n\tboundary=\"" + c.markerAlt.string() + "\"\r\n\r\n"))
+			if err != nil {
+				return
+			}
+
+			_, err = w.Write(c.markerAlt.delemiter())
+			if err != nil {
+				return
+			}
+			err = c.writeTextPlain(w)
+			if err != nil {
+				return
+			}
+
+			_, err = w.Write(c.markerAlt.delemiter())
+			if err != nil {
+				return
+			}
 			err = c.writeTextHTML(w)
 			if err != nil {
 				return
 			}
-		}
 
-		// Plain text
-		if len(c.textPlain) != 0 {
+			_, err = w.Write(c.markerAlt.finish())
+			if err != nil {
+				return
+			}
+
+		} else if len(c.textHTML) != 0 {
+			if c.markerGlobal.isset() {
+				_, err = w.Write([]byte("\r\n"))
+				if err != nil {
+					return
+				}
+				_, err = w.Write(c.markerGlobal.delemiter())
+				if err != nil {
+					return
+				}
+			}
+			err = c.writeTextHTML(w)
+			if err != nil {
+				return
+			}
+		} else if len(c.textPlain) != 0 {
+			if c.markerGlobal.isset() {
+				_, err = w.Write([]byte("\r\n"))
+				if err != nil {
+					return
+				}
+				_, err = w.Write(c.markerGlobal.delemiter())
+				if err != nil {
+					return
+				}
+			}
 			err = c.writeTextPlain(w)
 			if err != nil {
 				return
@@ -102,11 +159,9 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 		}
 
 		// Attachments
-		if len(c.attachments) != 0 {
-			err = c.writeAttachment(w)
-			if err != nil {
-				return
-			}
+		err = c.writeAttachment(w)
+		if err != nil {
+			return
 		}
 
 		if c.markerGlobal.isset() {
@@ -122,16 +177,6 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 
 // Text block
 func (c *Builder) writeTextPlain(w io.Writer) (err error) {
-	if c.markerGlobal.isset() {
-		_, err = w.Write([]byte("\r\n"))
-		if err != nil {
-			return
-		}
-		_, err = w.Write(c.markerGlobal.delemiter())
-		if err != nil {
-			return
-		}
-	}
 	_, err = w.Write([]byte("Content-Type: text/plain;\r\n\t charset=\"utf-8\"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n"))
 	if err != nil {
 		return
@@ -151,16 +196,6 @@ func (c *Builder) writeTextPlain(w io.Writer) (err error) {
 
 // HTML block
 func (c *Builder) writeTextHTML(w io.Writer) (err error) {
-	if c.markerGlobal.isset() {
-		_, err = w.Write([]byte("\r\n"))
-		if err != nil {
-			return
-		}
-		_, err = w.Write(c.markerGlobal.delemiter())
-		if err != nil {
-			return
-		}
-	}
 	if len(c.textHTMLRelated) != 0 {
 		c.markerHTML.new()
 		_, err = w.Write([]byte("Content-Type: multipart/related;\r\n\tboundary=\"" + c.markerHTML.string() + "\"\r\n\r\n"))
@@ -176,7 +211,7 @@ func (c *Builder) writeTextHTML(w io.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	dwr := newDelimitWriter(w, []byte{0x0d,0x0a}, 76) // 76 from RFC
+	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
 	_, err = b64Enc.Write(c.textHTML)
 	if err != nil {
@@ -202,7 +237,7 @@ func (c *Builder) writeTextHTML(w io.Writer) (err error) {
 			return
 		}
 
-		err = base64FileWriter(w, c.textHTMLRelated[i])
+		err = base64FileWriter(w, c.textHTMLRelated[i], "inline")
 		if err != nil {
 			return
 		}
@@ -223,6 +258,13 @@ func (c *Builder) writeTextHTML(w io.Writer) (err error) {
 
 func (c *Builder) writeAttachment(w io.Writer) (err error) {
 	for i := range c.attachments {
+		if !c.markerGlobal.isset() {
+			c.markerGlobal.new()
+			_, err = w.Write([]byte("Content-Type: multipart/mixed;\r\n\tboundary=\"" + c.markerGlobal.string() + "\"\r\n"))
+			if err != nil {
+				return
+			}
+		}
 		_, err = w.Write([]byte("\r\n"))
 		if err != nil {
 			return
@@ -231,8 +273,7 @@ func (c *Builder) writeAttachment(w io.Writer) (err error) {
 		if err != nil {
 			return
 		}
-
-		err = base64FileWriter(w, c.attachments[i])
+		err = base64FileWriter(w, c.attachments[i], "attachment")
 		if err != nil {
 			return
 		}
@@ -340,33 +381,15 @@ func (w *delimitWriter) Write(p []byte) (n int, err error) {
 		if err != nil {
 			break
 		}
-		if w.n++; w.n % w.cnt == 0 {
+		if w.n++; w.n%w.cnt == 0 {
 			w.writer.Write(w.dr)
 
 		}
 	}
 	return w.n, err
 }
-//
-//func fileInfo(f *os.File) (name, content string, size int64, err error){
-//	name = filepath.Base(f.Name())
-//	var info os.FileInfo
-//	info, err = f.Stat()
-//	if err != nil {
-//		return
-//	}
-//	size = info.Size()
-//	buf := make([]byte, 512)
-//	_, err = f.Read(buf)
-//	if err != nil  && err != io.EOF{
-//		return
-//	}
-//	content = http.DetectContentType(buf)
-//	_, err = f.Seek(0, 0)
-//	return
-//}
 
-func base64FileWriter(w io.Writer, f *os.File) (err error) {
+func base64FileWriter(w io.Writer, f *os.File, disposition string) (err error) {
 	name := filepath.Base(f.Name())
 	var info os.FileInfo
 	info, err = f.Stat()
@@ -376,24 +399,30 @@ func base64FileWriter(w io.Writer, f *os.File) (err error) {
 	size := info.Size()
 	buf := make([]byte, 512)
 	_, err = f.Read(buf)
-	if err != nil  && err != io.EOF{
+	if err != nil && err != io.EOF {
 		return
 	}
 	content := http.DetectContentType(buf)
 	_, err = f.Seek(0, 0)
-
+	var contentID string
+	if disposition == "inline" {
+		contentID = "Content-ID: <" + name + ">\r\n"
+	}
+	//contentID = "Content-ID: <" + name + ">\r\n"
 	_, err = w.Write([]byte(fmt.Sprintf(
-		"Content-Type: %s;\r\n\tname=\"%s\"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <%s>\r\nContent-Disposition: inline;\r\n\tfilename=\"%s\"; size=%d;\r\n\r\n",
+		"Content-Type: %s;\r\n\tname=\"%s\"\r\nContent-Transfer-Encoding: base64\r\n%sContent-Disposition: %s;\r\n\tfilename=\"%s\"; size=%d;\r\n\r\n",
 		content,
 		name,
+		contentID,
+		disposition,
 		name,
-		name,
+//		name,
 		size)))
 	if err != nil {
 		return
 	}
 
-	dwr := newDelimitWriter(w, []byte{0x0d,0x0a}, 76) // 76 from RFC
+	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
 
 	_, err = io.Copy(b64Enc, f)

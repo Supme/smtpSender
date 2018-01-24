@@ -14,13 +14,13 @@ var (
 
 func TestBuilder(t *testing.T) {
 	bldr := new(Builder)
-	bldr.Subject("Test subject")
-	bldr.From("Вася", "vasya@mail.ru")
-	bldr.To("Петя", "petya@mail.ru")
-	bldr.Header("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.TextPlain(textPlain)
-	bldr.TextHtmlWithRelated(textHTML, "./sender.go", "./email.go")
-	bldr.Attachment("./connect.go")
+	bldr.SetSubject("Test subject")
+	bldr.SetFrom("Вася", "vasya@mail.ru")
+	bldr.SetTo("Петя", "petya@mail.ru")
+	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
+	bldr.AddTextPlain(textPlain)
+	bldr.AddTextHTML(textHTML, "./sender.go", "./email.go")
+	bldr.AddAttachment("./connect.go")
 	w := &bytes.Buffer{}
 	email := bldr.Email("Id-123", func(Result) {})
 	err := email.Writer(w)
@@ -32,13 +32,13 @@ func TestBuilder(t *testing.T) {
 
 func BenchmarkBuilder(b *testing.B) {
 	bldr := new(Builder)
-	bldr.Subject("Test subject")
-	bldr.From("Вася", "vasya@mail.ru")
-	bldr.To("Петя", "petya@mail.ru")
-	bldr.Header("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.TextPlain(textPlain)
-	bldr.TextHtmlWithRelated(textHTML, "./sender.go", "./email.go")
-	bldr.Attachment("./connect.go")
+	bldr.SetSubject("Test subject")
+	bldr.SetFrom("Вася", "vasya@mail.ru")
+	bldr.SetTo("Петя", "petya@mail.ru")
+	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
+	bldr.AddTextPlain(textPlain)
+	bldr.AddTextHTML(textHTML, "./sender.go", "./email.go")
+	bldr.AddAttachment("./connect.go")
 	var err error
 	w := ioutil.Discard
 	for n := 0; n < b.N; n++ {

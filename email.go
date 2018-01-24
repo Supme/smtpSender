@@ -59,7 +59,7 @@ func (e *Email) Send(connect *Connect) {
 
 func (e *Email) send(auth smtp.Auth, host string, client *smtp.Client) error {
 	var (
-		err error
+		err              error
 		testHookStartTLS func(*tls.Config)
 	)
 	if ok, _ := client.Extension("STARTTLS"); ok {
@@ -112,7 +112,7 @@ func (e *Email) to() string {
 	return e.toEmail + "@" + e.toDomain
 }
 
-func (e *Email) parseEmail() (err error){
+func (e *Email) parseEmail() (err error) {
 	e.fromName, e.fromEmail, e.fromDomain, err = splitEmail(e.From)
 	if err != nil {
 		return fmt.Errorf("Field From has %s", err)

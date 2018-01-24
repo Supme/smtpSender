@@ -13,51 +13,57 @@ import (
 	"time"
 )
 
+// Builder helper for create email
 type Builder struct {
-	replyTo		string
-	from            string
-	to              string
-	subject         string
+	From            string
+	To              string
+	Subject         string
+	replyTo         string
 	headers         []string
 	textPlain       []byte
 	textHTML        []byte
 	textHTMLRelated []*os.File
 	attachments     []*os.File
 	markerGlobal    marker
-	markerAlt      marker
+	markerAlt       marker
 	markerHTML      marker
 }
 
-func (c *Builder) From(name, email string) {
-	c.from = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
+// SetFrom email sender
+func (c *Builder) SetFrom(name, email string) {
+	c.From = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
 }
 
-func (c *Builder) To(name, email string) {
-	c.to = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
+// SetTo email recipient
+func (c *Builder) SetTo(name, email string) {
+	c.To = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
 }
 
-func (c *Builder) ReplyTo(name, email string) {
+// SetSubject set email subject
+func (c *Builder) SetSubject(text string) {
+	c.Subject = mime.BEncoding.Encode("utf-8", text)
+}
+
+// AddReplyTo add Reply-To header
+func (c *Builder) AddReplyTo(name, email string) {
 	c.replyTo = email
 }
 
-func (c *Builder) Subject(text string) {
-	c.subject = mime.BEncoding.Encode("utf-8", text)
-}
-
-func (c *Builder) Header(header ...string) {
-	for i := range header {
-		c.headers = append(c.headers, header[i]+"\r\n")
+// AddHeader add extra header to email
+func (c *Builder) AddHeader(headers ...string) {
+	for i := range headers {
+		c.headers = append(c.headers, headers[i]+"\r\n")
 	}
 }
 
-// TextHtmlWithRelated add text/html content with related file.
+// AddTextHTML add text/html content with related file.
 //
-// Example use file in html
-//  email.TextHtmlWithRelated(
+// Example use related file in html
+//  AddTextHTML(
 //  	`... <img src="cid:myImage.jpg" width="500px" height="250px" border="1px" alt="My image"/> ...`,
 //  	"/path/to/attach/myImage.jpg",
 //  )
-func (c *Builder) TextHtmlWithRelated(html []byte, files ...string) (err error) {
+func (c *Builder) AddTextHTML(html []byte, files ...string) (err error) {
 	for i := range files {
 		file, err := os.Open(files[i])
 		if err != nil {
@@ -69,11 +75,13 @@ func (c *Builder) TextHtmlWithRelated(html []byte, files ...string) (err error) 
 	return nil
 }
 
-func (c *Builder) TextPlain(text []byte) {
+// AddTextPlain add plain text
+func (c *Builder) AddTextPlain(text []byte) {
 	c.textPlain = text
 }
 
-func (c *Builder) Attachment(files ...string) error {
+// AddAttachment add attachment files to email
+func (c *Builder) AddAttachment(files ...string) error {
 	for i := range files {
 		file, err := os.Open(files[i])
 		if err != nil {
@@ -84,11 +92,12 @@ func (c *Builder) Attachment(files ...string) error {
 	return nil
 }
 
+// Email return Email struct with render function
 func (c *Builder) Email(id string, resultFunc func(Result)) Email {
 	email := new(Email)
 	email.ID = id
-	email.From = c.from
-	email.To = c.to
+	email.From = c.From
+	email.To = c.To
 	email.ResultFunc = resultFunc
 	email.Writer = func(w io.Writer) (err error) {
 		// Headers
@@ -107,7 +116,7 @@ func (c *Builder) Email(id string, resultFunc func(Result)) Email {
 			blkCount++
 		}
 
-		if len(c.attachments) !=0 {
+		if len(c.attachments) != 0 {
 			c.markerGlobal.new()
 			_, err = w.Write([]byte("Content-Type: multipart/mixed;\r\n\tboundary=\"" + c.markerGlobal.string() + "\"\r\n"))
 			if err != nil {
@@ -205,13 +214,12 @@ func (c *Builder) Email(id string, resultFunc func(Result)) Email {
 	return *email
 }
 
-
 func (c *Builder) writeHeaders(w io.Writer) (err error) {
-	_, err = w.Write([]byte("From: " + c.from + "\r\n"))
+	_, err = w.Write([]byte("From: " + c.From + "\r\n"))
 	if err != nil {
 		return
 	}
-	_, err = w.Write([]byte("To: " + c.to + "\r\n"))
+	_, err = w.Write([]byte("To: " + c.To + "\r\n"))
 	if err != nil {
 		return
 	}
@@ -232,7 +240,7 @@ func (c *Builder) writeHeaders(w io.Writer) (err error) {
 			return
 		}
 	}
-	_, err = w.Write([]byte("Subject: " + c.subject + "\r\n"))
+	_, err = w.Write([]byte("Subject: " + c.Subject + "\r\n"))
 	return
 }
 

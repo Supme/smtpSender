@@ -6,28 +6,28 @@ import (
 	"net"
 	"net/smtp"
 	"net/url"
-	"strings"
-	"time"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 )
 
 const (
 	dialTimeout = 30 * time.Second
-	dialTries = 3
+	dialTries   = 3
 	connTimeout = 5 * time.Minute // SMTP RFC 5 min
-	connTries = 5
+	connTries   = 5
 )
 
+// Connect to smtp server from configured interface
 type Connect struct {
 	iface    string
 	hostname string
 	portSMTP int
-	// mapIP use for translate local Iface to global if NAT
-	// if use Socks server translate Iface SOCKS server to real Iface
 	mapIP map[string]string
 }
 
+// SetMapIP if use NAT set global IP address
 func (c *Connect) SetMapIP(localIP, globalIP string) {
 	if c.mapIP == nil {
 		c.mapIP = map[string]string{}
@@ -36,11 +36,16 @@ func (c *Connect) SetMapIP(localIP, globalIP string) {
 }
 
 // SetSMTPport set SMTP server port. Default 25
+// use for translate local Iface to global if NAT
+// if use Socks server translate Iface SOCKS server to real Iface
 func (c *Connect) SetSMTPport(port int) {
 	c.portSMTP = port
 }
 
-// SetIP use this Iface for send. Default use default interface.
+// SetIface use this Iface for send. Default use default interface.
+// Example:
+//   IP "1.2.3.4"
+//   Socks5 proxy "socks5://user:password@1.2.3.4" or "socks5://1.2.3.4"
 func (c *Connect) SetIface(iface string) {
 	c.iface = iface
 }
@@ -60,7 +65,7 @@ func (c *Connect) newClient(domain string) (client *smtp.Client, err error) {
 		c.portSMTP = 25
 	}
 
-	if 	dialer, err = dialFunction(c.iface); err != nil {
+	if dialer, err = dialFunction(c.iface); err != nil {
 		return nil, err
 	}
 
@@ -202,7 +207,7 @@ func dialFunction(iface string) (dialFunc func(network, address string) (net.Con
 		} else {
 			iface := net.Dialer{
 				LocalAddr: &net.TCPAddr{IP: net.ParseIP(iface)},
-				Timeout: dialTimeout,
+				Timeout:   dialTimeout,
 			}
 			dialFunc = iface.Dial
 		}

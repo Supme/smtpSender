@@ -8,7 +8,7 @@ type emailField struct {
 
 var (
 	rightEmail []emailField
-	badEmail []emailField
+	badEmail   []emailField
 )
 
 func init() {

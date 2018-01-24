@@ -22,7 +22,7 @@ func TestBuilder(t *testing.T) {
 	bldr.TextHtmlWithRelated(textHTML, "./sender.go", "./email.go")
 	bldr.Attachment("./connect.go")
 	w := &bytes.Buffer{}
-	email := bldr.Render("Id-123", func(Result) {})
+	email := bldr.Email("Id-123", func(Result) {})
 	err := email.Writer(w)
 	if err != nil {
 		t.Error(err)
@@ -42,7 +42,7 @@ func BenchmarkBuilder(b *testing.B) {
 	var err error
 	w := ioutil.Discard
 	for n := 0; n < b.N; n++ {
-		email := bldr.Render("Id-123", func(Result) {})
+		email := bldr.Email("Id-123", func(Result) {})
 		err = email.Writer(w)
 		if err != nil {
 			b.Error(err)

@@ -14,6 +14,7 @@ import (
 )
 
 type Builder struct {
+	replyTo		string
 	from            string
 	to              string
 	subject         string
@@ -27,42 +28,71 @@ type Builder struct {
 	markerHTML      marker
 }
 
-type marker []byte
-
-func (m *marker) new() {
-	b := make([]byte, 30)
-	rand.Read(b)
-	en := base64.StdEncoding // or URLEncoding
-	d := make([]byte, en.EncodedLen(len(b)))
-	en.Encode(d, b)
-	*m = []byte(string(d))
+func (c *Builder) From(name, email string) {
+	c.from = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
 }
 
-func (m *marker) delemiter() []byte {
-	return []byte("--" + string(*m) + "\r\n")
+func (c *Builder) To(name, email string) {
+	c.to = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
 }
 
-func (m *marker) finish() []byte {
-	return []byte("\r\n--" + string(*m) + "--\r\n")
+func (c *Builder) ReplyTo(name, email string) {
+	c.replyTo = email
 }
 
-func (m *marker) isset() bool {
-	return string(*m) != ""
+func (c *Builder) Subject(text string) {
+	c.subject = mime.BEncoding.Encode("utf-8", text)
 }
 
-func (m *marker) string() string {
-	return string(*m)
+func (c *Builder) Header(header ...string) {
+	for i := range header {
+		c.headers = append(c.headers, header[i]+"\r\n")
+	}
 }
 
-func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
-	var email Email
+// TextHtmlWithRelated add text/html content with related file.
+//
+// Example use file in html
+//  email.TextHtmlWithRelated(
+//  	`... <img src="cid:myImage.jpg" width="500px" height="250px" border="1px" alt="My image"/> ...`,
+//  	"/path/to/attach/myImage.jpg",
+//  )
+func (c *Builder) TextHtmlWithRelated(html []byte, files ...string) (err error) {
+	for i := range files {
+		file, err := os.Open(files[i])
+		if err != nil {
+			return err
+		}
+		c.textHTMLRelated = append(c.textHTMLRelated, file)
+	}
+	c.textHTML = html
+	return nil
+}
+
+func (c *Builder) TextPlain(text []byte) {
+	c.textPlain = text
+}
+
+func (c *Builder) Attachment(files ...string) error {
+	for i := range files {
+		file, err := os.Open(files[i])
+		if err != nil {
+			return err
+		}
+		c.attachments = append(c.attachments, file)
+	}
+	return nil
+}
+
+func (c *Builder) Email(id string, resultFunc func(Result)) Email {
+	email := new(Email)
 	email.ID = id
 	email.From = c.from
 	email.To = c.to
 	email.ResultFunc = resultFunc
 	email.Writer = func(w io.Writer) (err error) {
 		// Headers
-		err = c.WriteHeaders(w)
+		err = c.writeHeaders(w)
 		if err != nil {
 			return
 		}
@@ -92,7 +122,7 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 				if err != nil {
 					return
 				}
-				_, err = w.Write(c.markerGlobal.delemiter())
+				_, err = w.Write(c.markerGlobal.delimiter())
 				if err != nil {
 					return
 				}
@@ -103,7 +133,7 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 				return
 			}
 
-			_, err = w.Write(c.markerAlt.delemiter())
+			_, err = w.Write(c.markerAlt.delimiter())
 			if err != nil {
 				return
 			}
@@ -112,7 +142,7 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 				return
 			}
 
-			_, err = w.Write(c.markerAlt.delemiter())
+			_, err = w.Write(c.markerAlt.delimiter())
 			if err != nil {
 				return
 			}
@@ -132,7 +162,7 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 				if err != nil {
 					return
 				}
-				_, err = w.Write(c.markerGlobal.delemiter())
+				_, err = w.Write(c.markerGlobal.delimiter())
 				if err != nil {
 					return
 				}
@@ -147,7 +177,7 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 				if err != nil {
 					return
 				}
-				_, err = w.Write(c.markerGlobal.delemiter())
+				_, err = w.Write(c.markerGlobal.delimiter())
 				if err != nil {
 					return
 				}
@@ -172,7 +202,38 @@ func (c *Builder) Render(id string, resultFunc func(Result)) *Email {
 		}
 		return
 	}
-	return &email
+	return *email
+}
+
+
+func (c *Builder) writeHeaders(w io.Writer) (err error) {
+	_, err = w.Write([]byte("From: " + c.from + "\r\n"))
+	if err != nil {
+		return
+	}
+	_, err = w.Write([]byte("To: " + c.to + "\r\n"))
+	if err != nil {
+		return
+	}
+	if c.replyTo != "" {
+		_, err = w.Write([]byte("Reply-To: <" + c.replyTo + ">\r\n"))
+		if err != nil {
+			return
+		}
+	}
+	_, err = w.Write([]byte("Date: " + time.Now().Format(time.RFC1123Z) + "\r\n"))
+	if err != nil {
+		return
+	}
+	_, err = w.Write([]byte("MIME-Version: 1.0\r\n"))
+	for i := range c.headers {
+		_, err = w.Write([]byte(c.headers[i]))
+		if err != nil {
+			return
+		}
+	}
+	_, err = w.Write([]byte("Subject: " + c.subject + "\r\n"))
+	return
 }
 
 // Text block
@@ -202,7 +263,7 @@ func (c *Builder) writeTextHTML(w io.Writer) (err error) {
 		if err != nil {
 			return
 		}
-		_, err = w.Write(c.markerHTML.delemiter())
+		_, err = w.Write(c.markerHTML.delimiter())
 		if err != nil {
 			return
 		}
@@ -232,12 +293,12 @@ func (c *Builder) writeTextHTML(w io.Writer) (err error) {
 		if err != nil {
 			return
 		}
-		_, err = w.Write(c.markerHTML.delemiter())
+		_, err = w.Write(c.markerHTML.delimiter())
 		if err != nil {
 			return
 		}
 
-		err = base64FileWriter(w, c.textHTMLRelated[i], "inline")
+		err = fileBase64Writer(w, c.textHTMLRelated[i], "inline")
 		if err != nil {
 			return
 		}
@@ -269,11 +330,11 @@ func (c *Builder) writeAttachment(w io.Writer) (err error) {
 		if err != nil {
 			return
 		}
-		_, err = w.Write(c.markerGlobal.delemiter())
+		_, err = w.Write(c.markerGlobal.delimiter())
 		if err != nil {
 			return
 		}
-		err = base64FileWriter(w, c.attachments[i], "attachment")
+		err = fileBase64Writer(w, c.attachments[i], "attachment")
 		if err != nil {
 			return
 		}
@@ -283,85 +344,6 @@ func (c *Builder) writeAttachment(w io.Writer) (err error) {
 		}
 	}
 	return
-}
-
-func (c *Builder) WriteHeaders(w io.Writer) (err error) {
-	_, err = w.Write([]byte("Return-path: " + c.from + "\r\n"))
-	if err != nil {
-		return
-	}
-	_, err = w.Write([]byte("From: " + c.from + "\r\n"))
-	if err != nil {
-		return
-	}
-	_, err = w.Write([]byte("To: " + c.to + "\r\n"))
-	if err != nil {
-		return
-	}
-	_, err = w.Write([]byte("Date: " + time.Now().Format(time.RFC1123Z) + "\r\n"))
-	if err != nil {
-		return
-	}
-	_, err = w.Write([]byte("MIME-Version: 1.0\r\n"))
-	for i := range c.headers {
-		_, err = w.Write([]byte(c.headers[i]))
-		if err != nil {
-			return
-		}
-	}
-	_, err = w.Write([]byte("Subject: " + c.subject + "\r\n"))
-	return
-}
-
-func (c *Builder) From(name, email string) {
-	c.from = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
-}
-
-func (c *Builder) To(name, email string) {
-	c.to = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
-}
-
-func (c *Builder) Subject(text string) {
-	c.subject = mime.BEncoding.Encode("utf-8", text)
-}
-
-func (c *Builder) Header(header ...string) {
-	for i := range header {
-		c.headers = append(c.headers, header[i]+"\r\n")
-	}
-}
-
-// TextHtmlWithRelated add text/html content with related file.
-//
-// Example use file in html
-//  email.TextHtmlWithRelated(
-//  	`... <img src="cid:myImage.jpg" width="500px" height="250px" border="1px" alt="My image"/> ...`,
-//  	"/path/to/attach/myImage.jpg",
-//  )
-func (c *Builder) TextHtmlWithRelated(html []byte, files ...string) (err error) {
-	for i := range files {
-		file, err := os.Open(files[i])
-		if err != nil {
-			return err
-		}
-		c.textHTMLRelated = append(c.textHTMLRelated, file)
-	}
-	c.textHTML = html
-	return nil
-}
-func (c *Builder) TextPlain(text []byte) {
-	c.textPlain = text
-}
-
-func (c *Builder) Attachment(files ...string) error {
-	for i := range files {
-		file, err := os.Open(files[i])
-		if err != nil {
-			return err
-		}
-		c.attachments = append(c.attachments, file)
-	}
-	return nil
 }
 
 type delimitWriter struct {
@@ -389,7 +371,7 @@ func (w *delimitWriter) Write(p []byte) (n int, err error) {
 	return w.n, err
 }
 
-func base64FileWriter(w io.Writer, f *os.File, disposition string) (err error) {
+func fileBase64Writer(w io.Writer, f *os.File, disposition string) (err error) {
 	name := filepath.Base(f.Name())
 	var info os.FileInfo
 	info, err = f.Stat()
@@ -408,7 +390,6 @@ func base64FileWriter(w io.Writer, f *os.File, disposition string) (err error) {
 	if disposition == "inline" {
 		contentID = "Content-ID: <" + name + ">\r\n"
 	}
-	//contentID = "Content-ID: <" + name + ">\r\n"
 	_, err = w.Write([]byte(fmt.Sprintf(
 		"Content-Type: %s;\r\n\tname=\"%s\"\r\nContent-Transfer-Encoding: base64\r\n%sContent-Disposition: %s;\r\n\tfilename=\"%s\"; size=%d;\r\n\r\n",
 		content,
@@ -416,7 +397,6 @@ func base64FileWriter(w io.Writer, f *os.File, disposition string) (err error) {
 		contentID,
 		disposition,
 		name,
-//		name,
 		size)))
 	if err != nil {
 		return
@@ -431,4 +411,31 @@ func base64FileWriter(w io.Writer, f *os.File, disposition string) (err error) {
 	}
 
 	return b64Enc.Close()
+}
+
+type marker []byte
+
+func (m *marker) new() {
+	b := make([]byte, 30)
+	rand.Read(b)
+	en := base64.StdEncoding // or URLEncoding
+	d := make([]byte, en.EncodedLen(len(b)))
+	en.Encode(d, b)
+	*m = []byte(string(d))
+}
+
+func (m *marker) delimiter() []byte {
+	return []byte("--" + string(*m) + "\r\n")
+}
+
+func (m *marker) finish() []byte {
+	return []byte("\r\n--" + string(*m) + "--\r\n")
+}
+
+func (m *marker) isset() bool {
+	return string(*m) != ""
+}
+
+func (m *marker) string() string {
+	return string(*m)
 }

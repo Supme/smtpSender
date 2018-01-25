@@ -23,7 +23,7 @@ func TestBuilder(t *testing.T) {
 	bldr.AddAttachment("./connect.go")
 	w := &bytes.Buffer{}
 	email := bldr.Email("Id-123", func(Result) {})
-	err := email.Writer(w)
+	err := email.WriteCloser(w)
 	if err != nil {
 		t.Error(err)
 	}
@@ -43,7 +43,7 @@ func BenchmarkBuilder(b *testing.B) {
 	w := ioutil.Discard
 	for n := 0; n < b.N; n++ {
 		email := bldr.Email("Id-123", func(Result) {})
-		err = email.Writer(w)
+		err = email.WriteCloser(w)
 		if err != nil {
 			b.Error(err)
 		}

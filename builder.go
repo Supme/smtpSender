@@ -99,7 +99,7 @@ func (c *Builder) Email(id string, resultFunc func(Result)) Email {
 	email.From = c.From
 	email.To = c.To
 	email.ResultFunc = resultFunc
-	email.Writer = func(w io.Writer) (err error) {
+	email.WriteCloser = func(w io.WriteCloser) (err error) {
 		// Headers
 		err = c.writeHeaders(w)
 		if err != nil {
@@ -209,6 +209,10 @@ func (c *Builder) Email(id string, resultFunc func(Result)) Email {
 				return
 			}
 		}
+
+		// The end!
+		w.Close()
+
 		return
 	}
 	return *email

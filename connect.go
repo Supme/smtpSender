@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	dialTimeout = 30 * time.Second
+	dialTimeout = 60 * time.Second
 	dialTries   = 3
 	connTimeout = 5 * time.Minute // SMTP RFC 5 min
 	connTries   = 5

@@ -26,8 +26,8 @@ type Email struct {
 	toName, toEmail, toDomain string
 	// ResultFunc exec after send emil
 	ResultFunc func(Result)
-	// Writer email body data writer function
-	Writer func(io.Writer) error
+	// WriteCloser email body data writer function
+	WriteCloser func(io.WriteCloser) error
 }
 
 // Result struct for return send emailField result
@@ -91,14 +91,14 @@ func (e *Email) send(auth smtp.Auth, host string, client *smtp.Client) error {
 		return err
 	}
 
-	err = e.Writer(w)
+	err = e.WriteCloser(w)
 	if err != nil {
 		return err
 	}
-	err = w.Close()
-	if err != nil {
-		return err
-	}
+	//err = w.Close()
+	//if err != nil {
+	//	return err
+	//}
 
 	return err
 

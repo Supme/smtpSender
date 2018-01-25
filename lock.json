@@ -1,6 +1,14 @@
 {
-    "memo": "a47f08363ad58c2b2b0534c7047f8fb2f2b8b653ee6fe64f868d0b79a20c1134",
+    "memo": "8772ff1bb1ec1eb093b3a5f794188143356561ee3b84bb0a3f8e7c16e37ddde2",
     "projects": [
+        {
+            "name": "github.com/toorop/go-dkim",
+            "branch": "master",
+            "revision": "83672023c79e6b352bf9d4908e6c060c7a24323c",
+            "packages": [
+                "."
+            ]
+        },
         {
             "name": "golang.org/x/net",
             "branch": "master",

@@ -14,13 +14,13 @@ bldr.AddTextHTML("<h1>textHTML</h1><img src=\"cid:image.gif\"/>", "./image.gif")
 bldr.AddAttachment("./file.zip", "./music.mp3")
 email := bldr.Email("Id-123", func(result smtpSender.Result){
 	fmt.Printf("Result for email id '%s' duration: %f sec result: %v\n", result.ID, result.Duration.Seconds(), result.Err)
-	})
+})
 	
 conn := new(smtpSender.Connect)
 conn.SetHostName("sender.domain.tld")
 conn.SetMapIP("192.168.0.10", "31.32.33.34")
 	
- email.Send(conn)
+email.Send(conn)
 ```
   
 Send email from pool
@@ -43,7 +43,7 @@ for i := 1; i <= 15; i++ {
 	bldr.SetFrom("Sender", "sender@domain.tld")
 	bldr.SetTo("Me", "me+test@mail.tld")
 	bldr.SetSubject("Test subject " + id)
-    bldr.SetDKIM("domain.tld", "test", myPrivateKey)
+	bldr.SetDKIM("domain.tld", "test", myPrivateKey)
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <Id-123>", "Precedence: bulk")
 	bldr.AddTextPlain("textPlain")
 	bldr.AddTextHTML("<h1>textHTML</h1><img src=\"cid:image.gif\"/>", "./image.gif")
@@ -63,7 +63,7 @@ fmt.Printf("Stream send duration: %s\r\n", time.Now().Sub(start).String())
 Use template for email
 ```
 import (
-    ...
+	...
 	tmplHTML "html/template"
 	tmplText "text/template"
 )

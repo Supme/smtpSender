@@ -1,6 +1,7 @@
 package smtpSender
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -11,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"bytes"
 )
 
 // Builder helper for create email
@@ -23,6 +23,8 @@ type Builder struct {
 	headers         []string
 	textPlain       []byte
 	textHTML        []byte
+	htmlFunc        func(io.Writer) error
+	textFunc        func(io.Writer) error
 	textHTMLRelated []*os.File
 	attachments     []*os.File
 	markerGlobal    marker
@@ -32,8 +34,8 @@ type Builder struct {
 }
 
 type builderDKIM struct {
-	domain string
-	selector string
+	domain     string
+	selector   string
 	privateKey []byte
 }
 
@@ -64,6 +66,22 @@ func (c *Builder) AddReplyTo(name, email string) {
 	c.replyTo = email
 }
 
+func (c *Builder) AddHTMLFunc(f func(io.Writer) error, file ...string) error {
+	for i := range file {
+		file, err := os.Open(file[i])
+		if err != nil {
+			return err
+		}
+		c.textHTMLRelated = append(c.textHTMLRelated, file)
+	}
+	c.htmlFunc = f
+	return nil
+}
+
+func (c *Builder) AddTextFunc(f func(io.Writer) error) {
+	c.textFunc = f
+}
+
 // AddHeader add extra header to email
 func (c *Builder) AddHeader(headers ...string) {
 	for i := range headers {
@@ -78,9 +96,9 @@ func (c *Builder) AddHeader(headers ...string) {
 //  	`... <img src="cid:myImage.jpg" width="500px" height="250px" border="1px" alt="My image"/> ...`,
 //  	"/path/to/attach/myImage.jpg",
 //  )
-func (c *Builder) AddTextHTML(html []byte, files ...string) (err error) {
-	for i := range files {
-		file, err := os.Open(files[i])
+func (c *Builder) AddTextHTML(html []byte, file ...string) (err error) {
+	for i := range file {
+		file, err := os.Open(file[i])
 		if err != nil {
 			return err
 		}
@@ -96,9 +114,9 @@ func (c *Builder) AddTextPlain(text []byte) {
 }
 
 // AddAttachment add attachment files to email
-func (c *Builder) AddAttachment(files ...string) error {
-	for i := range files {
-		file, err := os.Open(files[i])
+func (c *Builder) AddAttachment(file ...string) error {
+	for i := range file {
+		file, err := os.Open(file[i])
 		if err != nil {
 			return err
 		}
@@ -133,7 +151,7 @@ func (c *Builder) Email(id string, resultFunc func(Result)) Email {
 	return *email
 }
 
-func(c *Builder) builder(w io.Writer) (err error) {
+func (c *Builder) builder(w io.Writer) (err error) {
 	// Headers
 	err = c.writeHeaders(w)
 	if err != nil {
@@ -149,7 +167,7 @@ func(c *Builder) builder(w io.Writer) (err error) {
 	}
 
 	// Plain text this Text HTML
-	if len(c.textPlain) != 0 && len(c.textHTML) != 0 {
+	if (len(c.textPlain) != 0 && len(c.textHTML) != 0) || (c.htmlFunc != nil && c.textFunc != nil) {
 		if c.markerGlobal.isset() {
 			_, err = w.Write([]byte("\r\n"))
 			if err != nil {
@@ -189,7 +207,7 @@ func(c *Builder) builder(w io.Writer) (err error) {
 			return
 		}
 
-	} else if len(c.textHTML) != 0 {
+	} else if len(c.textHTML) != 0 || c.htmlFunc != nil {
 		if c.markerGlobal.isset() {
 			_, err = w.Write([]byte("\r\n"))
 			if err != nil {
@@ -204,7 +222,7 @@ func(c *Builder) builder(w io.Writer) (err error) {
 		if err != nil {
 			return
 		}
-	} else if len(c.textPlain) != 0 {
+	} else if len(c.textPlain) != 0 || c.textFunc != nil {
 		if c.markerGlobal.isset() {
 			_, err = w.Write([]byte("\r\n"))
 			if err != nil {
@@ -274,16 +292,23 @@ func (c *Builder) writeTextPlain(w io.Writer) (err error) {
 		return
 	}
 	q := quotedprintable.NewWriter(w)
-	_, err = q.Write(c.textPlain)
+	if c.textFunc != nil {
+		err = c.textFunc(q)
+		if err != nil {
+			return
+		}
+	} else {
+		_, err = q.Write(c.textPlain)
+		if err != nil {
+			return
+		}
+	}
+	err = q.Close()
 	if err != nil {
 		return
 	}
-	q.Close()
-	_, err = w.Write([]byte("\r\n"))
-	if err != nil {
-		return
-	}
-	return q.Close()
+	_, err = w.Write([]byte("\r\n\r\n"))
+	return
 }
 
 // HTML block
@@ -303,15 +328,21 @@ func (c *Builder) writeTextHTML(w io.Writer) (err error) {
 	if err != nil {
 		return
 	}
+
 	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-	_, err = b64Enc.Write(c.textHTML)
-	if err != nil {
-		return
-	}
-	err = b64Enc.Close()
-	if err != nil {
-		return
+	defer b64Enc.Close()
+
+	if c.htmlFunc != nil {
+		err = c.htmlFunc(b64Enc)
+		if err != nil {
+			return
+		}
+	} else {
+		_, err = b64Enc.Write(c.textHTML)
+		if err != nil {
+			return
+		}
 	}
 	_, err = w.Write([]byte("\r\n"))
 	if err != nil {

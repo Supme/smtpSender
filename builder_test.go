@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"testing"
 	"io"
+	tmplHTML "html/template"
+	tmplText "text/template"
 )
 
 type devNull struct {}
@@ -57,6 +59,35 @@ func BenchmarkBuilder(b *testing.B) {
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
 	bldr.AddTextPlain(textPlain)
 	bldr.AddTextHTML(textHTML)
+	var err error
+	for n := 0; n < b.N; n++ {
+		email := bldr.Email("Id-123", func(Result) {})
+		err = email.WriteCloser(discard)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func BenchmarkBuilderTemplate(b *testing.B) {
+	bldr := new(Builder)
+	bldr.SetSubject("Test subject")
+	bldr.SetFrom("Вася", "vasya@mail.tld")
+	bldr.SetTo("Петя", "petya@mail.tld")
+	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
+
+	html := tmplHTML.New("HTML")
+	html.Parse(`<h1>This 'HTML' template.</h1><h2>Hello {{.Name}}</h2>`)
+	text := tmplText.New("Text")
+	text.Parse("This 'Text' template. Hello {{.Name}}")
+	data := map[string]string{"Name": "Вася"}
+	bldr.AddTextFunc(func(w io.Writer) error {
+		return text.Execute(w, data)
+	})
+	bldr.AddHTMLFunc(func(w io.Writer) error {
+		return html.Execute(w, data)
+	})
+
 	var err error
 	for n := 0; n < b.N; n++ {
 		email := bldr.Email("Id-123", func(Result) {})

@@ -67,7 +67,7 @@ import (
 	tmplHTML "html/template"
 	tmplText "text/template"
 )
-...
+    ...
 	html := tmplHTML.New("HTML")
 	html.Parse(`<h1>This 'HTML' template.</h1><img src="cid:image.gif"><h2>Hello {{.Name}}!</h2>`)
 	text := tmplText.New("Text")
@@ -79,5 +79,5 @@ import (
 	bldr.AddHTMLFunc(func(w io.Writer) error {
 		return html.Execute(w, data)
 	}, "./image.gif")
-...
+    ...
 ```

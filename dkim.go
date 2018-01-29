@@ -20,6 +20,5 @@ func dkimSign(d builderDKIM, body *[]byte) error {
 		return err
 	}
 
-
 	return nil
 }

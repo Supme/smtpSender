@@ -3,10 +3,10 @@ package smtpSender
 import (
 	"bytes"
 	"encoding/base64"
+	tmplHTML "html/template"
+	"io"
 	"io/ioutil"
 	"testing"
-	"io"
-	tmplHTML "html/template"
 	tmplText "text/template"
 )
 
@@ -26,14 +26,15 @@ jmvL0nJNOnYnFlxcqM8o2PeI+iX02ylM6a9grVGPMm3WkcfwOhkPCs5PbLd5rgGM
 ULVKljw/S+rzAZxd8rDNAkANpbVUb3cGBPFK18PR7OsSAxcUNMfwbr5j1oI270i5
 uCCZipHDZcGKVanHeBAV8lwRsKYHkkydniVmVfJIIr1z
 -----END RSA PRIVATE KEY-----`)
-	textPlain = []byte("Привет, буфет\r\nЗдорова, колбаса!\r\nКак твои дела?\r\n0123456789\r\nabcdefgh\r\n")
-	textHTML  = []byte("<h1>Привет, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
-	discard io.WriteCloser = devNull{}
+	textPlain                = []byte("Привет, буфет\r\nЗдорова, колбаса!\r\nКак твои дела?\r\n0123456789\r\nabcdefgh\r\n")
+	textHTML                 = []byte("<h1>Привет, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
+	discard   io.WriteCloser = devNull{}
 )
 
-type devNull struct {}
-func (devNull) Write(p []byte) (int, error) {return len(p), nil}
-func (devNull) Close() error {return nil}
+type devNull struct{}
+
+func (devNull) Write(p []byte) (int, error) { return len(p), nil }
+func (devNull) Close() error                { return nil }
 
 func TestBuilder(t *testing.T) {
 	bldr := new(Builder)

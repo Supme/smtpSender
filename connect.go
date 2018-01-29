@@ -24,7 +24,7 @@ type Connect struct {
 	iface    string
 	hostname string
 	portSMTP int
-	mapIP map[string]string
+	mapIP    map[string]string
 }
 
 // SetMapIP if use NAT set global IP address

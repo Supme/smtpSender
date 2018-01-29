@@ -39,7 +39,7 @@ type builderDKIM struct {
 	privateKey []byte
 }
 
-// SetDKIM
+// SetDKIM sign DKIM parameters
 func (c *Builder) SetDKIM(domain, selector string, privateKey []byte) {
 	c.dkim.domain = domain
 	c.dkim.selector = selector
@@ -66,6 +66,7 @@ func (c *Builder) AddReplyTo(name, email string) {
 	c.replyTo = email
 }
 
+// AddHTMLFunc add writer function for HTML
 func (c *Builder) AddHTMLFunc(f func(io.Writer) error, file ...string) error {
 	for i := range file {
 		file, err := os.Open(file[i])
@@ -78,6 +79,7 @@ func (c *Builder) AddHTMLFunc(f func(io.Writer) error, file ...string) error {
 	return nil
 }
 
+// AddTextFunc add writer function for plain text
 func (c *Builder) AddTextFunc(f func(io.Writer) error) {
 	c.textFunc = f
 }

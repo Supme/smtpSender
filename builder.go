@@ -146,6 +146,7 @@ func (c *Builder) Email(id string, resultFunc func(Result)) Email {
 		e := b.Bytes()
 		dkimSign(c.dkim, &e)
 		_, err = w.Write(e)
+		b.Reset()
 		return err
 	}
 	return *email

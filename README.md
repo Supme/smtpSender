@@ -21,6 +21,8 @@ conn.SetHostName("sender.domain.tld")
 conn.SetMapIP("192.168.0.10", "31.32.33.34")
 	
 email.Send(conn)
+or
+email.SendThroughServer(conn, "smtp.server.tld", 587, "sender@domain.tld", "password")
 ```
   
 Send email from pool

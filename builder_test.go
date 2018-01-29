@@ -10,10 +10,6 @@ import (
 	tmplText "text/template"
 )
 
-type devNull struct {}
-func (devNull) Write(p []byte) (int, error) {return len(p), nil}
-func (devNull) Close() error {return nil}
-
 var (
 	pkey = []byte(`-----BEGIN RSA PRIVATE KEY-----
 MIICXQIBAAKBgQC5exyEkt7y+xgJI63jgqGVb7bWmSNvZSfbXqXFLklVJcB70Sy4
@@ -34,6 +30,10 @@ uCCZipHDZcGKVanHeBAV8lwRsKYHkkydniVmVfJIIr1z
 	textHTML  = []byte("<h1>Привет, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
 	discard io.WriteCloser = devNull{}
 )
+
+type devNull struct {}
+func (devNull) Write(p []byte) (int, error) {return len(p), nil}
+func (devNull) Close() error {return nil}
 
 func TestBuilder(t *testing.T) {
 	bldr := new(Builder)

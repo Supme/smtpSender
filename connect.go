@@ -55,7 +55,7 @@ func (c *Connect) SetHostName(name string) {
 	c.hostname = name
 }
 
-func (c *Connect) newClient(domain string) (client *smtp.Client, err error) {
+func (c *Connect) newClient(domain string, lookupMX bool) (client *smtp.Client, err error) {
 	var (
 		dialer func(network, address string) (net.Conn, error)
 		mxs    []*net.MX
@@ -69,12 +69,16 @@ func (c *Connect) newClient(domain string) (client *smtp.Client, err error) {
 		return nil, err
 	}
 
-	for tries := 0; tries < dialTries; tries++ {
-		mxs, err = net.LookupMX(domain)
-		if err == nil {
-			break
+	if lookupMX {
+		for tries := 0; tries < dialTries; tries++ {
+			mxs, err = net.LookupMX(domain)
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Second)
 		}
-		time.Sleep(time.Second)
+	} else {
+		mxs = append(mxs, &net.MX{domain, 10})
 	}
 
 	if len(mxs) == 0 {

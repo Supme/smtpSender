@@ -20,9 +20,17 @@ conn := new(smtpSender.Connect)
 conn.SetHostName("sender.domain.tld")
 conn.SetMapIP("192.168.0.10", "31.32.33.34")
 	
-email.Send(conn)
+email.Send(conn, nil)
+
 or
-email.SendThroughServer(conn, "smtp.server.tld", 587, "sender@domain.tld", "password")
+
+server = &smtpSender.SMTPserver{
+	Host:     "smtp.server.tld",
+	Port:     587,
+	Username: "sender@domain.tld",
+	Password: "password",
+}
+email.Send(conn, server)
 ```
   
 Send email from pool

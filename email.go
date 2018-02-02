@@ -37,53 +37,77 @@ type Result struct {
 	Err      error
 }
 
+type SMTPserver struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+}
+
 // Send sending this email
-func (e *Email) Send(connect *Connect) {
-	start := time.Now()
-	e.parseEmail()
-	client, err := connect.newClient(e.toDomain, true)
-	if err != nil {
-		e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("421 %v", err), Duration: time.Now().Sub(start)})
-		return
-	}
-	defer func() {
-		client.Quit()
-		client.Close()
-	}()
-
-	err = e.send(nil, "", client)
-	e.ResultFunc(Result{ID: e.ID, Err: err, Duration: time.Now().Sub(start)})
-
-	return
-}
-
-// SendThroughServer sending this email
-func (e *Email) SendThroughServer(connect *Connect, server string, port int, username, password string) {
-	start := time.Now()
-	e.parseEmail()
-	connect.SetSMTPport(port)
-	client, err := connect.newClient(server, false)
-	if err != nil {
-		e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("421 %v", err), Duration: time.Now().Sub(start)})
-		return
-	}
-	defer func() {
-		client.Quit()
-		client.Close()
-	}()
-	auth := smtp.PlainAuth(
-		"",
-		username,
-		password,
-		server,
+func (e *Email) Send(connect *Connect, server *SMTPserver) {
+	var (
+		client *smtp.Client
+		auth   smtp.Auth
+		err    error
 	)
-	err = e.send(auth, "", client)
-	e.ResultFunc(Result{ID: e.ID, Err: err, Duration: time.Now().Sub(start)})
+	start := time.Now()
+	e.parseEmail()
 
+	if server == nil {
+		client, err = connect.newClient(e.toDomain, true)
+	} else {
+		auth = smtp.PlainAuth(
+			"",
+			server.Username,
+			server.Password,
+			server.Host,
+		)
+		connect.SetSMTPport(server.Port)
+		client, err = connect.newClient(server.Host, false)
+	}
+	if err != nil {
+		e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("421 %v", err), Duration: time.Now().Sub(start)})
+		return
+	}
+
+	defer func() {
+		client.Quit()
+		client.Close()
+	}()
+
+	err = e.send(auth, client)
+	e.ResultFunc(Result{ID: e.ID, Err: err, Duration: time.Now().Sub(start)})
 	return
 }
 
-func (e *Email) send(auth smtp.Auth, host string, client *smtp.Client) error {
+//// SendThroughServer sending this email
+//func (e *Email) SendThroughServer(connect *Connect, server string, port int, username, password string) {
+//	start := time.Now()
+//	e.parseEmail()
+//	connect.SetSMTPport(port)
+//	client, err := connect.newClient(server, false)
+//	if err != nil {
+//		e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("421 %v", err), Duration: time.Now().Sub(start)})
+//		return
+//	}
+//	defer func() {
+//		client.Quit()
+//		client.Close()
+//	}()
+//	auth := smtp.PlainAuth(
+//		"",
+//		username,
+//		password,
+//		server,
+//	)
+//	err = e.send(auth, client)
+//	e.ResultFunc(Result{ID: e.ID, Err: err, Duration: time.Now().Sub(start)})
+//
+//	return
+//}
+
+func (e *Email) send(auth smtp.Auth, client *smtp.Client) error {
 	var (
 		err              error
 		testHookStartTLS func(*tls.Config)

@@ -7,11 +7,12 @@ type sender struct {
 
 // Config profile for sender pool
 type Config struct {
-	Hostname string
-	Iface    string
-	Port     int
-	Stream   int
-	MapIP    map[string]string
+	Hostname   string
+	Iface      string
+	Port       int
+	Stream     int
+	MapIP      map[string]string
+	SMTPserver SMTPserver
 }
 
 // NewEmailPipe return new stream sender
@@ -30,7 +31,7 @@ func NewEmailPipe(conf ...Config) chan Email {
 					conn.SetSMTPport(s.conf.Port)
 					conn.SetIface(s.conf.Iface)
 					conn.mapIP = s.conf.MapIP
-					e.Send(conn)
+					e.Send(conn, &s.conf.SMTPserver)
 					_ = <-s.backet
 				}(&e)
 			}

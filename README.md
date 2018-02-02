@@ -1,5 +1,7 @@
 # smtpSender
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/Supme/smtpSender)](https://goreportcard.com/report/github.com/Supme/smtpSender)
+
 Send email
 ```
 bldr := &smtpSender.Builder{

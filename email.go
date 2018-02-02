@@ -37,6 +37,7 @@ type Result struct {
 	Err      error
 }
 
+// SMTPserver use for send email from server
 type SMTPserver struct {
 	Host     string
 	Port     int

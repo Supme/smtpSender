@@ -78,7 +78,7 @@ func (c *Connect) newClient(domain string, lookupMX bool) (client *smtp.Client, 
 			time.Sleep(time.Second)
 		}
 	} else {
-		mxs = append(mxs, &net.MX{domain, 10})
+		mxs = append(mxs, &net.MX{Host: domain, Pref: 10})
 	}
 
 	if len(mxs) == 0 {

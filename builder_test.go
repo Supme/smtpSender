@@ -50,6 +50,49 @@ func TestBuilder(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+}
+
+//type writeCloser struct {
+//	bytes.Buffer
+//}
+//func (wc *writeCloser) Close() error {
+//	return nil
+//}
+
+func TestBuilderTemplate(t *testing.T) {
+	bldr := new(Builder)
+	data := map[string]string{"Name": "Вася"}
+
+	subj := tmplText.New("Text")
+	subj.Parse("Test subject for {{.Name}}")
+	bldr.AddSubjectFunc(func(w io.Writer) error {
+		return subj.Execute(w, data)
+	})
+
+	bldr.SetFrom("Вася", "vasya@mail.tld")
+	bldr.SetTo("Петя", "petya@mail.tld")
+
+	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
+
+	html := tmplHTML.New("HTML")
+	html.Parse(`<h1>This 'HTML' template.</h1><h2>Hello {{.Name}}</h2>`)
+	text := tmplText.New("Text")
+	text.Parse("This 'Text' template. Hello {{.Name}}")
+
+	bldr.AddTextFunc(func(w io.Writer) error {
+		return text.Execute(w, data)
+	})
+	bldr.AddHTMLFunc(func(w io.Writer) error {
+		return html.Execute(w, data)
+	})
+
+	email := bldr.Email("Id-123", func(Result) {})
+
+	err := email.WriteCloser(discard)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func BenchmarkBuilder(b *testing.B) {
@@ -72,16 +115,24 @@ func BenchmarkBuilder(b *testing.B) {
 
 func BenchmarkBuilderTemplate(b *testing.B) {
 	bldr := new(Builder)
-	bldr.SetSubject("Test subject")
+	data := map[string]string{"Name": "Вася"}
+
+	subj := tmplText.New("Text")
+	subj.Parse("Test subject for {{.Name}}")
+	bldr.AddSubjectFunc(func(w io.Writer) error {
+		return subj.Execute(w, data)
+	})
+
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
+
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
 
 	html := tmplHTML.New("HTML")
 	html.Parse(`<h1>This 'HTML' template.</h1><h2>Hello {{.Name}}</h2>`)
 	text := tmplText.New("Text")
 	text.Parse("This 'Text' template. Hello {{.Name}}")
-	data := map[string]string{"Name": "Вася"}
+
 	bldr.AddTextFunc(func(w io.Writer) error {
 		return text.Execute(w, data)
 	})

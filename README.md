@@ -127,4 +127,8 @@ import (
 		return html.Execute(w, data)
 	}, "./image.gif")
     ...
+    
+    bldr.AddSubjectFunc(func(io.Writer) error)
+    
+    ...
 ```

@@ -176,7 +176,7 @@ func (b *Builder) builder(w io.Writer) (err error) {
 	}
 
 	// Plain text this Text HTML
-	if ((len(b.textPlain) != 0 || b.textFunc != nil) && (len(b.textHTML) != 0 || b.htmlFunc != nil)) {
+	if (len(b.textPlain) != 0 || b.textFunc != nil) && (len(b.textHTML) != 0 || b.htmlFunc != nil) {
 		if b.markerGlobal.isset() {
 			_, err = w.Write([]byte("\r\n"))
 			if err != nil {

@@ -17,7 +17,7 @@ type Config struct {
 
 // Pipe email pipe for send email
 type Pipe struct {
-	wg sync.WaitGroup
+	wg     sync.WaitGroup
 	email  chan Email
 	config []Config
 }
@@ -62,7 +62,7 @@ func (pipe *Pipe) Start() {
 }
 
 // Send add email to stream
-func (pipe *Pipe) Send(email Email) (err error){
+func (pipe *Pipe) Send(email Email) (err error) {
 	defer func(eml *Email, err *error) {
 		if e := recover(); e != nil {
 			*err = errors.New("email streaming pipe stopped")

@@ -34,8 +34,43 @@ server = &smtpSender.SMTPserver{
 }
 email.Send(conn, server)
 ```
-  
-Send email from pool
+
+Best way send email from pool
+```
+pipe := smtpSender.NewEmailPipe(
+	smtpSender.Config{
+		Iface:  "31.32.33.34",
+		Stream:   5,
+	},
+	smtpSender.Config{
+		Iface:  "socks5://222.222.222.222:7080",
+		Stream: 2,
+	})
+pipe.Start()
+
+for i := 1; i <= 50; i++ {
+    bldr := new(smtpSender.Builder)
+    bldr.SetFrom("Sender", "sender@domain.tld")
+    bldr.SetTo("Me", "me+test@mail.tld")
+    bldr.SetSubject("Test subject " + id)
+    bldr.AddTextHTML("<h1>textHTML</h1><img src=\"cid:image.gif\"/>", "./image.gif")
+    email := bldr.Email(id, func(result smtpSender.Result) {
+       	fmt.Printf("Result for email id '%s' duration: %f sec result: %v\n", result.ID, result.Duration.Seconds(), result.Err)
+       	wg.Done()
+    })
+	err := pipe.Send(email)
+	if err != nil {
+		fmt.Printf("Send email id '%d' error %+v\n", i, err)
+		break
+	}
+	if i == 35 {
+		pipe.Stop()
+	}
+}
+```
+
+
+One more method send email from pool
 ```
 emailPipe := smtpSender.NewEmailPipe(
 	smtpSender.Config{

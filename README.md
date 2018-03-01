@@ -115,20 +115,21 @@ import (
 	tmplText "text/template"
 )
     ...
+	subj := tmplText.New("Subject")
+	subj.Parse("{{.Name}} this template subject text.")
 	html := tmplHTML.New("HTML")
 	html.Parse(`<h1>This 'HTML' template.</h1><img src="cid:image.gif"><h2>Hello {{.Name}}!</h2>`)
 	text := tmplText.New("Text")
 	text.Parse("This 'Text' template. Hello {{.Name}}!")
 	data := map[string]string{"Name": "Вася"}
+	bldr.AddSubjectFunc(func(w io.Writer) error {
+		return subj.Execute(w, data)
+	})
 	bldr.AddTextFunc(func(w io.Writer) error {
 		return text.Execute(w, data)
 	})
 	bldr.AddHTMLFunc(func(w io.Writer) error {
 		return html.Execute(w, data)
 	}, "./image.gif")
-    ...
-    
-	bldr.AddSubjectFunc(func(io.Writer) error)
-    
     ...
 ```

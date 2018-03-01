@@ -176,7 +176,7 @@ func (b *Builder) builder(w io.Writer) (err error) {
 	}
 
 	// Plain text this Text HTML
-	if (len(b.textPlain) != 0 && len(b.textHTML) != 0) || (b.htmlFunc != nil && b.textFunc != nil) {
+	if ((len(b.textPlain) != 0 || b.textFunc != nil) && (len(b.textHTML) != 0 || b.htmlFunc != nil)) {
 		if b.markerGlobal.isset() {
 			_, err = w.Write([]byte("\r\n"))
 			if err != nil {
@@ -291,16 +291,18 @@ func (b *Builder) writeHeaders(w io.Writer) (err error) {
 		}
 	}
 
+	_, err = w.Write([]byte("Subject: " + b.Subject))
+	if err != nil {
+		return err
+	}
 	if b.subjectFunc != nil {
-		buf := &bytes.Buffer{}
-		err = b.subjectFunc(buf)
+		err = b.subjectFunc(w)
 		if err != nil {
 			return err
 		}
-		b.SetSubject(buf.String())
-		buf.Reset()
 	}
-	_, err = w.Write([]byte("Subject: " + b.Subject + "\r\n"))
+	_, err = w.Write([]byte("\r\n"))
+
 	return err
 }
 
@@ -311,13 +313,14 @@ func (b *Builder) writeTextPlain(w io.Writer) (err error) {
 		return
 	}
 	q := quotedprintable.NewWriter(w)
+
+	_, err = q.Write(b.textPlain)
+	if err != nil {
+		return
+	}
+
 	if b.textFunc != nil {
 		err = b.textFunc(q)
-		if err != nil {
-			return
-		}
-	} else {
-		_, err = q.Write(b.textPlain)
 		if err != nil {
 			return
 		}
@@ -352,13 +355,13 @@ func (b *Builder) writeTextHTML(w io.Writer) (err error) {
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
 	defer b64Enc.Close()
 
+	_, err = b64Enc.Write(b.textHTML)
+	if err != nil {
+		return
+	}
+
 	if b.htmlFunc != nil {
 		err = b.htmlFunc(b64Enc)
-		if err != nil {
-			return
-		}
-	} else {
-		_, err = b64Enc.Write(b.textHTML)
 		if err != nil {
 			return
 		}

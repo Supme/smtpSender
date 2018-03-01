@@ -128,7 +128,7 @@ import (
 	}, "./image.gif")
     ...
     
-    bldr.AddSubjectFunc(func(io.Writer) error)
+	bldr.AddSubjectFunc(func(io.Writer) error)
     
     ...
 ```

@@ -82,6 +82,7 @@ func (pipe *Pipe) Stop() {
 }
 
 // NewEmailPipe return new chanel for stream send
+// Deprecated: use NewPipe
 func NewEmailPipe(conf ...Config) chan<- Email {
 	pipe := NewPipe(conf...)
 	pipe.Start()

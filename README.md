@@ -2,6 +2,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/Supme/smtpSender)](https://goreportcard.com/report/github.com/Supme/smtpSender)
 
+
 Send email
 ```
 bldr := &smtpSender.Builder{
@@ -34,6 +35,7 @@ server = &smtpSender.SMTPserver{
 }
 email.Send(conn, server)
 ```
+
 
 Best way send email from pool
 ```
@@ -70,7 +72,35 @@ for i := 1; i <= 50; i++ {
 ```
 
 
-One more method send email from pool
+Use template for email
+```
+import (
+	...
+	tmplHTML "html/template"
+	tmplText "text/template"
+)
+    ...
+	subj := tmplText.New("Subject")
+	subj.Parse("{{.Name}} this template subject text.")
+	html := tmplHTML.New("HTML")
+	html.Parse(`<h1>This 'HTML' template.</h1><img src="cid:image.gif"><h2>Hello {{.Name}}!</h2>`)
+	text := tmplText.New("Text")
+	text.Parse("This 'Text' template. Hello {{.Name}}!")
+	data := map[string]string{"Name": "Вася"}
+	bldr.AddSubjectFunc(func(w io.Writer) error {
+		return subj.Execute(w, &data)
+	})
+	bldr.AddTextFunc(func(w io.Writer) error {
+		return text.Execute(w, &data)
+	})
+	bldr.AddHTMLFunc(func(w io.Writer) error {
+		return html.Execute(w, &data)
+	}, "./image.gif")
+    ...
+```
+
+
+One more method send email from pool (Depricated)
 ```
 emailPipe := smtpSender.NewEmailPipe(
 	smtpSender.Config{
@@ -105,31 +135,4 @@ for i := 1; i <= 15; i++ {
 wg.Wait()
 
 fmt.Printf("Stream send duration: %s\r\n", time.Now().Sub(start).String())
-```
-
-Use template for email
-```
-import (
-	...
-	tmplHTML "html/template"
-	tmplText "text/template"
-)
-    ...
-	subj := tmplText.New("Subject")
-	subj.Parse("{{.Name}} this template subject text.")
-	html := tmplHTML.New("HTML")
-	html.Parse(`<h1>This 'HTML' template.</h1><img src="cid:image.gif"><h2>Hello {{.Name}}!</h2>`)
-	text := tmplText.New("Text")
-	text.Parse("This 'Text' template. Hello {{.Name}}!")
-	data := map[string]string{"Name": "Вася"}
-	bldr.AddSubjectFunc(func(w io.Writer) error {
-		return subj.Execute(w, data)
-	})
-	bldr.AddTextFunc(func(w io.Writer) error {
-		return text.Execute(w, data)
-	})
-	bldr.AddHTMLFunc(func(w io.Writer) error {
-		return html.Execute(w, data)
-	}, "./image.gif")
-    ...
 ```

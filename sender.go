@@ -22,6 +22,8 @@ type Pipe struct {
 	config []Config
 }
 
+var ErrPipeStopped = errors.New("email streaming pipe stopped")
+
 // NewPipe return new stream sender pipe
 func NewPipe(conf ...Config) Pipe {
 	pipe := Pipe{}
@@ -65,7 +67,7 @@ func (pipe *Pipe) Start() {
 func (pipe *Pipe) Send(email Email) (err error) {
 	defer func(eml *Email, err *error) {
 		if e := recover(); e != nil {
-			*err = errors.New("email streaming pipe stopped")
+			*err = ErrPipeStopped
 			//eml.ResultFunc(Result{ID: eml.ID, Err: errors.New("421 email streaming pipe stopped")})
 		} else {
 			*err = nil

@@ -39,7 +39,7 @@ email.Send(conn, server)
 
 Best way send email from pool
 ```
-pipe := smtpSender.NewEmailPipe(
+pipe := smtpSender.NewPipe(
 	smtpSender.Config{
 		Iface:  "31.32.33.34",
 		Stream:   5,

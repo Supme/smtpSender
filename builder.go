@@ -59,7 +59,7 @@ func (b *Builder) SetTo(name, email string) {
 
 // SetSubject set email subject
 func (b *Builder) SetSubject(text string) {
-	b.Subject = mime.BEncoding.Encode("utf-8", text)
+	b.Subject = text
 }
 
 // AddSubjectFunc add writer function for subject
@@ -291,17 +291,18 @@ func (b *Builder) writeHeaders(w io.Writer) (err error) {
 		}
 	}
 
-	_, err = w.Write([]byte("Subject: " + b.Subject))
+	_, err = w.Write([]byte("Subject: "))
 	if err != nil {
 		return err
 	}
+	subj := bytes.NewBufferString(b.Subject)
 	if b.subjectFunc != nil {
-		err = b.subjectFunc(w)
+		err = b.subjectFunc(subj)
 		if err != nil {
 			return err
 		}
 	}
-	_, err = w.Write([]byte("\r\n"))
+	_, err = w.Write([]byte(mime.BEncoding.Encode("utf-8", subj.String()) + "\r\n"))
 
 	return err
 }

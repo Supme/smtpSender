@@ -47,6 +47,10 @@ type SMTPserver struct {
 
 // Send sending this email
 func (e *Email) Send(connect *Connect, server *SMTPserver) {
+	if connect == nil {
+		connect = &Connect{}
+	}
+
 	var (
 		client *smtp.Client
 		auth   smtp.Auth

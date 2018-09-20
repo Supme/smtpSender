@@ -76,10 +76,6 @@ func (e *Email) Send(connect *Connect, server *SMTPserver) {
 		return
 	}
 
-	defer func() {
-
-	}()
-
 	err = e.send(auth, client)
 	e.ResultFunc(Result{ID: e.ID, Err: err, Duration: time.Now().Sub(start)})
 	return

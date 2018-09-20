@@ -125,8 +125,7 @@ func (e *Email) send(auth smtp.Auth, client *smtp.Client) error {
 		return err
 	}
 
-	return err
-
+	return w.Close()
 }
 
 func (e *Email) from() string {

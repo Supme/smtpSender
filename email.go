@@ -77,8 +77,7 @@ func (e *Email) Send(connect *Connect, server *SMTPserver) {
 	}
 
 	defer func() {
-		client.Quit()
-		client.Close()
+
 	}()
 
 	err = e.send(auth, client)
@@ -119,13 +118,16 @@ func (e *Email) send(auth smtp.Auth, client *smtp.Client) error {
 	if err != nil {
 		return err
 	}
-
 	err = e.WriteCloser(w)
 	if err != nil {
 		return err
 	}
+	w.Close()
+	if err != nil {
+		return err
+	}
 
-	return w.Close()
+	return client.Close()
 }
 
 func (e *Email) from() string {

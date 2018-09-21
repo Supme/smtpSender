@@ -123,7 +123,7 @@ func (e *Email) send(auth smtp.Auth, client *smtp.Client) error {
 		return err
 	}
 
-	return client.Close()
+	return client.Quit()
 }
 
 func (e *Email) from() string {

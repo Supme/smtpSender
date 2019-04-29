@@ -16,22 +16,26 @@ import (
 
 // Builder helper for create email
 type Builder struct {
-	From            string
-	To              string
-	Subject         string
-	subjectFunc     func(io.Writer) error
-	replyTo         string
-	headers         []string
-	textPlain       []byte
-	textHTML        []byte
-	htmlFunc        func(io.Writer) error
-	textFunc        func(io.Writer) error
-	textHTMLRelated []*os.File
-	attachments     []*os.File
-	markerGlobal    marker
-	markerAlt       marker
-	markerHTML      marker
-	dkim            builderDKIM
+	From             string
+	To               string
+	Subject          string
+	subjectFunc      func(io.Writer) error
+	replyTo          string
+	headers          []string
+	htmlPart         []byte
+	textPart         []byte
+	ampPart          []byte
+	htmlFunc         func(io.Writer) error
+	textFunc         func(io.Writer) error
+	ampFunc          func(io.Writer) error
+	htmlRelatedFiles []*os.File
+	ampRelatedFiles  []*os.File
+	attachments      []*os.File
+	markerGlobal     marker
+	markerAlt        marker
+	markerHTML       marker
+	markerAMP        marker
+	dkim             builderDKIM
 }
 
 type builderDKIM struct {
@@ -79,7 +83,7 @@ func (b *Builder) AddHTMLFunc(f func(io.Writer) error, file ...string) error {
 		if err != nil {
 			return err
 		}
-		b.textHTMLRelated = append(b.textHTMLRelated, file)
+		b.htmlRelatedFiles = append(b.htmlRelatedFiles, file)
 	}
 	b.htmlFunc = f
 	return nil
@@ -90,6 +94,19 @@ func (b *Builder) AddTextFunc(f func(io.Writer) error) {
 	b.textFunc = f
 }
 
+// AddAMPFunc add writer function for AMP HTML
+func (b *Builder) AddAMPFunc(f func(io.Writer) error, file ...string) error {
+	for i := range file {
+		file, err := os.Open(file[i])
+		if err != nil {
+			return err
+		}
+		b.ampRelatedFiles = append(b.ampRelatedFiles, file)
+	}
+	b.ampFunc = f
+	return nil
+}
+
 // AddHeader add extra header to email
 func (b *Builder) AddHeader(headers ...string) {
 	for i := range headers {
@@ -97,28 +114,53 @@ func (b *Builder) AddHeader(headers ...string) {
 	}
 }
 
-// AddTextHTML add text/html content with related file.
+// AddHTMLPart add text/html content with related file.
 //
 // Example use related file in html
-//  AddTextHTML(
+//  AddHTMLPart(
 //  	`... <img src="cid:myImage.jpg" width="500px" height="250px" border="1px" alt="My image"/> ...`,
 //  	"/path/to/attach/myImage.jpg",
 //  )
-func (b *Builder) AddTextHTML(html []byte, file ...string) (err error) {
+func (b *Builder) AddHTMLPart(html []byte, file ...string) (err error) {
 	for i := range file {
 		file, err := os.Open(file[i])
 		if err != nil {
 			return err
 		}
-		b.textHTMLRelated = append(b.textHTMLRelated, file)
+		b.htmlRelatedFiles = append(b.htmlRelatedFiles, file)
 	}
-	b.textHTML = html
+	b.htmlPart = html
 	return nil
 }
 
+// AddTextHTML
+// Deprecated: use AddHTMLPart
+func (b *Builder) AddTextHTML(html []byte, file ...string) (err error) {
+	return b.AddHTMLPart(html, file...)
+}
+
+// AddTextPart add plain text
+func (b *Builder) AddTextPart(text []byte) {
+	b.textPart = text
+}
+
 // AddTextPlain add plain text
+// Deprecated: use AddTextPart
 func (b *Builder) AddTextPlain(text []byte) {
-	b.textPlain = text
+	b.AddTextPart(text)
+}
+
+// AddAMPPart add text/x-amp-html content with related file.
+func (b *Builder) AddAMPPart(amp []byte, file ...string) (err error) {
+	for i := range file {
+		file, err := os.Open(file[i])
+		if err != nil {
+			return err
+		}
+		b.ampRelatedFiles = append(b.ampRelatedFiles, file)
+	}
+	b.ampPart = amp
+	return nil
 }
 
 // AddAttachment add attachment files to email
@@ -152,7 +194,10 @@ func (b *Builder) Email(id string, resultFunc func(Result)) Email {
 			return err
 		}
 		e := buf.Bytes()
-		dkimSign(b.dkim, &e)
+		fmt.Print(string(e))
+		if err := dkimSign(b.dkim, &e); err != nil {
+			return err
+		}
 		_, err = w.Write(e)
 		buf.Reset()
 		if err != nil {
@@ -170,7 +215,7 @@ func (b *Builder) builder(w io.Writer) (err error) {
 		return
 	}
 
-	if len(b.attachments) != 0 {
+	if b.isMultipart() {
 		b.markerGlobal.new()
 		_, err = w.Write([]byte("Content-Type: multipart/mixed;\r\n\tboundary=\"" + b.markerGlobal.string() + "\"\r\n"))
 		if err != nil {
@@ -178,40 +223,55 @@ func (b *Builder) builder(w io.Writer) (err error) {
 		}
 	}
 
-	// Plain text this Text HTML
-	if (len(b.textPlain) != 0 || b.textFunc != nil) && (len(b.textHTML) != 0 || b.htmlFunc != nil) {
-		if b.markerGlobal.isset() {
-			_, err = w.Write([]byte("\r\n"))
-			if err != nil {
-				return
-			}
-			_, err = w.Write(b.markerGlobal.delimiter())
-			if err != nil {
-				return
-			}
+	if b.markerGlobal.isset() {
+		_, err = w.Write([]byte("\r\n"))
+		if err != nil {
+			return
 		}
+		_, err = w.Write(b.markerGlobal.delimiter())
+		if err != nil {
+			return
+		}
+	}
+
+	if b.hasAlternative() {
 		b.markerAlt.new()
 		_, err = w.Write([]byte("Content-Type: multipart/alternative;\r\n\tboundary=\"" + b.markerAlt.string() + "\"\r\n\r\n"))
 		if err != nil {
 			return
 		}
 
-		_, err = w.Write(b.markerAlt.delimiter())
-		if err != nil {
-			return
-		}
-		err = b.writeTextPlain(w)
-		if err != nil {
-			return
+		if b.hasText() {
+			_, err = w.Write(b.markerAlt.delimiter())
+			if err != nil {
+				return
+			}
+			err = b.writeTextPart(w)
+			if err != nil {
+				return
+			}
 		}
 
-		_, err = w.Write(b.markerAlt.delimiter())
-		if err != nil {
-			return
+		if b.hasAMP() {
+			_, err = w.Write(b.markerAlt.delimiter())
+			if err != nil {
+				return
+			}
+			err = b.writeAMPPart(w)
+			if err != nil {
+				return
+			}
 		}
-		err = b.writeTextHTML(w)
-		if err != nil {
-			return
+
+		if b.hasHTML() {
+			_, err = w.Write(b.markerAlt.delimiter())
+			if err != nil {
+				return
+			}
+			err = b.writeHTMLPart(w)
+			if err != nil {
+				return
+			}
 		}
 
 		_, err = w.Write(b.markerAlt.finish())
@@ -219,35 +279,24 @@ func (b *Builder) builder(w io.Writer) (err error) {
 			return
 		}
 
-	} else if len(b.textHTML) != 0 || b.htmlFunc != nil {
-		if b.markerGlobal.isset() {
-			_, err = w.Write([]byte("\r\n"))
-			if err != nil {
-				return
-			}
-			_, err = w.Write(b.markerGlobal.delimiter())
+	} else {
+		if b.hasText() {
+			err = b.writeTextPart(w)
 			if err != nil {
 				return
 			}
 		}
-		err = b.writeTextHTML(w)
-		if err != nil {
-			return
-		}
-	} else if len(b.textPlain) != 0 || b.textFunc != nil {
-		if b.markerGlobal.isset() {
-			_, err = w.Write([]byte("\r\n"))
-			if err != nil {
-				return
-			}
-			_, err = w.Write(b.markerGlobal.delimiter())
+		if b.hasAMP() {
+			err = b.writeAMPPart(w)
 			if err != nil {
 				return
 			}
 		}
-		err = b.writeTextPlain(w)
-		if err != nil {
-			return
+		if b.hasHTML() {
+			err = b.writeHTMLPart(w)
+			if err != nil {
+				return
+			}
 		}
 	}
 
@@ -310,15 +359,15 @@ func (b *Builder) writeHeaders(w io.Writer) (err error) {
 	return err
 }
 
-// Text block
-func (b *Builder) writeTextPlain(w io.Writer) (err error) {
+// Text part
+func (b *Builder) writeTextPart(w io.Writer) (err error) {
 	_, err = w.Write([]byte("Content-Type: text/plain;\r\n\t charset=\"utf-8\"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n"))
 	if err != nil {
 		return
 	}
 	q := quotedprintable.NewWriter(w)
 
-	_, err = q.Write(b.textPlain)
+	_, err = q.Write(b.textPart)
 	if err != nil {
 		return
 	}
@@ -337,9 +386,9 @@ func (b *Builder) writeTextPlain(w io.Writer) (err error) {
 	return
 }
 
-// HTML block
-func (b *Builder) writeTextHTML(w io.Writer) (err error) {
-	if len(b.textHTMLRelated) != 0 {
+// HTML part
+func (b *Builder) writeHTMLPart(w io.Writer) (err error) {
+	if len(b.htmlRelatedFiles) != 0 {
 		b.markerHTML.new()
 		_, err = w.Write([]byte("Content-Type: multipart/related;\r\n\tboundary=\"" + b.markerHTML.string() + "\"\r\n\r\n"))
 		if err != nil {
@@ -359,7 +408,7 @@ func (b *Builder) writeTextHTML(w io.Writer) (err error) {
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
 	defer b64Enc.Close()
 
-	_, err = b64Enc.Write(b.textHTML)
+	_, err = b64Enc.Write(b.htmlPart)
 	if err != nil {
 		return
 	}
@@ -370,13 +419,13 @@ func (b *Builder) writeTextHTML(w io.Writer) (err error) {
 			return
 		}
 	}
-	_, err = w.Write([]byte("\r\n"))
+	_, err = w.Write([]byte("\r\n\r\n"))
 	if err != nil {
 		return
 	}
 
 	// related files
-	for i := range b.textHTMLRelated {
+	for i := range b.htmlRelatedFiles {
 		_, err = w.Write([]byte("\r\n"))
 		if err != nil {
 			return
@@ -386,7 +435,7 @@ func (b *Builder) writeTextHTML(w io.Writer) (err error) {
 			return
 		}
 
-		err = fileBase64Writer(w, b.textHTMLRelated[i], "inline")
+		err = fileBase64Writer(w, b.htmlRelatedFiles[i], "inline")
 		if err != nil {
 			return
 		}
@@ -398,6 +447,74 @@ func (b *Builder) writeTextHTML(w io.Writer) (err error) {
 
 	if b.markerHTML.isset() {
 		_, err = w.Write(b.markerHTML.finish())
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+// AMP part
+func (b *Builder) writeAMPPart(w io.Writer) (err error) {
+	if b.isAMPMultipart() {
+		b.markerAMP.new()
+		_, err = w.Write([]byte("Content-Type: multipart/related;\r\n\tboundary=\"" + b.markerAMP.string() + "\"\r\n\r\n"))
+		if err != nil {
+			return
+		}
+		_, err = w.Write(b.markerAMP.delimiter())
+		if err != nil {
+			return
+		}
+	}
+	_, err = w.Write([]byte("Content-Type: text/x-amp-html;\r\n\t charset=\"utf-8\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"))
+	if err != nil {
+		return
+	}
+
+	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
+	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
+	defer b64Enc.Close()
+
+	_, err = b64Enc.Write(b.ampPart)
+	if err != nil {
+		return
+	}
+
+	if b.ampFunc != nil {
+		err = b.ampFunc(b64Enc)
+		if err != nil {
+			return
+		}
+	}
+	_, err = w.Write([]byte("\r\n\r\n"))
+	if err != nil {
+		return
+	}
+
+	// related files
+	for i := range b.ampRelatedFiles {
+		_, err = w.Write([]byte("\r\n"))
+		if err != nil {
+			return
+		}
+		_, err = w.Write(b.markerAMP.delimiter())
+		if err != nil {
+			return
+		}
+
+		err = fileBase64Writer(w, b.ampRelatedFiles[i], "inline")
+		if err != nil {
+			return
+		}
+		_, err = w.Write([]byte("\r\n\r\n"))
+		if err != nil {
+			return
+		}
+	}
+
+	if b.markerAMP.isset() {
+		_, err = w.Write(b.markerAMP.finish())
 		if err != nil {
 			return
 		}
@@ -432,6 +549,52 @@ func (b *Builder) writeAttachment(w io.Writer) (err error) {
 		}
 	}
 	return
+}
+
+func (b *Builder) hasText() bool {
+	return len(b.textPart) != 0 || b.textFunc != nil
+}
+
+func (b *Builder) hasHTML() bool {
+	return len(b.htmlPart) != 0 || b.htmlFunc != nil
+}
+
+func (b *Builder) hasAMP() bool {
+	return len(b.ampPart) != 0 || b.ampFunc != nil
+}
+
+func (b *Builder) hasAlternative() bool {
+	var c = 0
+	if b.hasText() {
+		c++
+	}
+	if b.hasHTML() {
+		c++
+	}
+	if b.hasAMP() {
+		c++
+	}
+	return c > 1
+}
+
+func (b *Builder) isHTMLMultipart() bool {
+	return b.hasHTML() && (len(b.htmlRelatedFiles) > 0)
+}
+
+func (b *Builder) isAMPMultipart() bool {
+	return b.hasAMP() && (len(b.ampRelatedFiles) > 0)
+}
+
+
+func (b *Builder) isMultipart() bool {
+	var c = 0
+	if (len(b.textPart) != 0 || b.textFunc != nil) && (len(b.htmlPart) != 0 || b.htmlFunc != nil) && (len(b.ampPart) != 0 || b.ampFunc != nil) {
+		c++
+	}
+	if len(b.attachments) > 0 {
+		c++
+	}
+	return c > 1
 }
 
 type delimitWriter struct {
@@ -517,7 +680,7 @@ func (m *marker) delimiter() []byte {
 }
 
 func (m *marker) finish() []byte {
-	return []byte("\r\n--" + string(*m) + "--\r\n")
+	return []byte("--" + string(*m) + "--\r\n")
 }
 
 func (m *marker) isset() bool {

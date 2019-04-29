@@ -42,8 +42,8 @@ func TestBuilder(t *testing.T) {
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPlain(textPlain)
-	bldr.AddTextHTML(textHTML, "./testdata/prwoman.png")
+	bldr.AddTextPart(textPlain)
+	bldr.AddHTMLPart(textHTML, "./testdata/prwoman.png")
 	bldr.AddAttachment("./testdata/knwoman.png")
 	email := bldr.Email("Id-123", func(Result) {})
 	err := email.WriteCloser(discard)
@@ -101,8 +101,8 @@ func BenchmarkBuilder(b *testing.B) {
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPlain(textPlain)
-	bldr.AddTextHTML(textHTML)
+	bldr.AddTextPart(textPlain)
+	bldr.AddHTMLPart(textHTML)
 	var err error
 	for n := 0; n < b.N; n++ {
 		email := bldr.Email("Id-123", func(Result) {})
@@ -156,8 +156,8 @@ func BenchmarkBuilderAttachment(b *testing.B) {
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPlain(textPlain)
-	bldr.AddTextHTML(textHTML, "./testdata/prwoman.png")
+	bldr.AddTextPart(textPlain)
+	bldr.AddHTMLPart(textHTML, "./testdata/prwoman.png")
 	bldr.AddAttachment("./testdata/knwoman.png")
 	var err error
 	for n := 0; n < b.N; n++ {
@@ -176,8 +176,8 @@ func BenchmarkBuilderDKIM(b *testing.B) {
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPlain(textPlain)
-	bldr.AddTextHTML(textHTML)
+	bldr.AddTextPart(textPlain)
+	bldr.AddHTMLPart(textHTML)
 	var err error
 	for n := 0; n < b.N; n++ {
 		email := bldr.Email("Id-123", func(Result) {})
@@ -195,8 +195,8 @@ func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPlain(textPlain)
-	bldr.AddTextHTML(textHTML, "./testdata/prwoman.png")
+	bldr.AddTextPart(textPlain)
+	bldr.AddHTMLPart(textHTML, "./testdata/prwoman.png")
 	bldr.AddAttachment("./testdata/knwoman.png")
 	var err error
 	for n := 0; n < b.N; n++ {

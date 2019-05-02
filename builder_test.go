@@ -12,19 +12,19 @@ import (
 
 var (
 	pkey = []byte(`-----BEGIN RSA PRIVATE KEY-----
-MIICXQIBAAKBgQC5exyEkt7y+xgJI63jgqGVb7bWmSNvZSfbXqXFLklVJcB70Sy4
-zGb4/GbNULpCKFtOJItAJNN80GpRak2X465roTsmQvHI0rUQMaQQUJ9ZP3OdUO+/
-MU1IR0T1WW5ZULxO6zo5oEpYxvflTgzwzEuJbYVsUvyA/fgMt+CkUKNJHwIDAQAB
-AoGACieXVBrGYf8lPbraVk5cklXfaLhRnFOpbvUrljQGh8bdVuoIzMVEDfWjmzIE
-QIL9HLYbeZOKkJbIe1SakupALkRj9BgS5TjC8EF3naIl6vcZDsaV7T+AwhZqDXF6
-OyCzqCW99UzrFhs/dQ/j9b/uOM0leRS8bP+gS7Awp5RxgmECQQDq9fypFIDYvJbM
-eq6QI/OE/phmqsaSlNbE1myDCAFx9OOdR0LkCxDVJx/aSe4hTYXen5gl+uWoMJ8z
-sfGxovOdAkEAyhbk0ZayKwwYC9eJlNk2kMml512G7jPoAf5iV7URvTBiW39yZFFU
-nvBtmMpQTat7eDBxjoEOD3q0i5QHlzfI6wJBAK7OMBnDDVEyjaa3p2PJu4U4vT20
-1GN9pINxW+3oaNrVbPo4aEWtDernXsVSt33DZVOJvPKUxYPqGKenPcABEekCQQCM
-jmvL0nJNOnYnFlxcqM8o2PeI+iX02ylM6a9grVGPMm3WkcfwOhkPCs5PbLd5rgGM
-ULVKljw/S+rzAZxd8rDNAkANpbVUb3cGBPFK18PR7OsSAxcUNMfwbr5j1oI270i5
-uCCZipHDZcGKVanHeBAV8lwRsKYHkkydniVmVfJIIr1z
+MIICXQIBAAKBgQCvis6cltd3R1Y2xJm1mUpR9aBnpH2x8qux8kg1Pvsk9reeXN+n
+wGbIISC/yM/hvQx9lCQki/OETKQYdTERjndtaJv1AgRhMccJNocXheWJD9dMUMYd
+PX2PMLkFTguUT47bPt9rR9wXCDyf1tBIDnFzy8aaReLIupuDhV0al7mWOQIDAQAB
+AoGAOXcJN/2xP1zc/kTRxL8Ps1DjV8pjU3OLfU9BEB0z/d++MFta5AF6JB2kKORG
+GTHX+uwaANTHvRGRzmfezk6DDYUD0I0v8kdfp1EHX1klMHHu8jQFA7mkoBbUwjca
+oqwizZNUkXRNV2V6E5U933+TBFm0J0ejF0vnUDD1dpvbF+ECQQDb+D67wI39KzVb
+VOs49RDEXYVLihmXsWZopbuoMaS5ZQ8q7cZ+qDIJimxTvObGQhO57EgTe2M9IZKh
+v0RsV15lAkEAzEuhpKUnJZkxtY154SiU2QzbGm+W70YQovqfZYBHFyLVAHfmHjNN
+LgbWeHA63ata28rkfe6m9sBFIR7teEfBRQJAZLkKOLyWB7wWRYjf4IfOsqvEEm/d
+AinYI8jn4b9BlybgSB7yiiKILvg0XC+eWF//Wl4ILuuL6H0MAIZtVVK4RQJBAIyw
+GOUVhtvxn7Xzc9eG5tqCa/DMoBivG43hIhv4NvzL0/u6lhJ+KcxkkRXn0+ILu0pZ
+cvj2fKy4w+KHNen7IDECQQCv4zeGpyO2AZnEBeHqHs9PCySglqIiHc56l9fSZu0u
+6nAfGefm766gqBoYTC/1upkMYJpxizyH7U/7WessATfA
 -----END RSA PRIVATE KEY-----`)
 	textPlain                = []byte("Привет, буфет\r\nЗдорова, колбаса!\r\nКак твои дела?\r\n0123456789\r\nabcdefgh\r\n")
 	textHTML                 = []byte("<h1>Привет, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
@@ -45,6 +45,8 @@ func TestBuilder(t *testing.T) {
 	bldr.AddTextPart(textPlain)
 	bldr.AddHTMLPart(textHTML, "./testdata/prwoman.png")
 	bldr.AddAttachment("./testdata/knwoman.png")
+
+	//_ = bldr.Email("Id-123", func(Result) {})
 	email := bldr.Email("Id-123", func(Result) {})
 	err := email.WriteCloser(discard)
 	if err != nil {
@@ -87,8 +89,8 @@ func TestBuilderTemplate(t *testing.T) {
 		return html.Execute(w, data)
 	})
 
+	//_ = bldr.Email("Id-123", func(Result) {})
 	email := bldr.Email("Id-123", func(Result) {})
-
 	err := email.WriteCloser(discard)
 	if err != nil {
 		t.Error(err)
@@ -105,6 +107,7 @@ func BenchmarkBuilder(b *testing.B) {
 	bldr.AddHTMLPart(textHTML)
 	var err error
 	for n := 0; n < b.N; n++ {
+		//_ = bldr.Email("Id-123", func(Result) {})
 		email := bldr.Email("Id-123", func(Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
@@ -142,6 +145,7 @@ func BenchmarkBuilderTemplate(b *testing.B) {
 
 	var err error
 	for n := 0; n < b.N; n++ {
+		//_ = bldr.Email("Id-123", func(Result) {})
 		email := bldr.Email("Id-123", func(Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
@@ -161,6 +165,7 @@ func BenchmarkBuilderAttachment(b *testing.B) {
 	bldr.AddAttachment("./testdata/knwoman.png")
 	var err error
 	for n := 0; n < b.N; n++ {
+		//_ = bldr.Email("Id-123", func(Result) {})
 		email := bldr.Email("Id-123", func(Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
@@ -180,6 +185,7 @@ func BenchmarkBuilderDKIM(b *testing.B) {
 	bldr.AddHTMLPart(textHTML)
 	var err error
 	for n := 0; n < b.N; n++ {
+		//_ = bldr.Email("Id-123", func(Result) {})
 		email := bldr.Email("Id-123", func(Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
@@ -200,6 +206,7 @@ func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
 	bldr.AddAttachment("./testdata/knwoman.png")
 	var err error
 	for n := 0; n < b.N; n++ {
+		_ = bldr.Email("Id-123", func(Result) {})
 		email := bldr.Email("Id-123", func(Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {

@@ -6,6 +6,7 @@ import (
 	tmplHTML "html/template"
 	"io"
 	"io/ioutil"
+	"net/textproto"
 	"testing"
 	tmplText "text/template"
 )
@@ -26,9 +27,10 @@ GOUVhtvxn7Xzc9eG5tqCa/DMoBivG43hIhv4NvzL0/u6lhJ+KcxkkRXn0+ILu0pZ
 cvj2fKy4w+KHNen7IDECQQCv4zeGpyO2AZnEBeHqHs9PCySglqIiHc56l9fSZu0u
 6nAfGefm766gqBoYTC/1upkMYJpxizyH7U/7WessATfA
 -----END RSA PRIVATE KEY-----`)
-	textPlain                = []byte("Привет, буфет\r\nЗдорова, колбаса!\r\nКак твои дела?\r\n0123456789\r\nabcdefgh\r\n")
-	textHTML                 = []byte("<h1>Привет, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
-	discard   io.WriteCloser = devNull{}
+	textPart                = []byte("Привет, буфет\r\nЗдорова, колбаса!\r\nКак твои дела?\r\n0123456789\r\nabcdefgh\r\n")
+	htmlPart                = []byte("<h1>Привет, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
+	ampPart                 = []byte(`<!doctype html>\r\n<html amp4email>\r\n<head>\r\n<title>Hello World</title>\r\n<meta charset=\"utf-8\">\r\n<style amp4email-boilerplate>body{visibility:hidden}</style>\r\n<script async src=\"https://cdn.ampproject.org/v0.js\"></script>\r\n<script async custom-element=\"amp-carousel\" src=\"https://cdn.ampproject.org/v0/amp-carousel-0.1.js\"></script>\r\n</head>\r\n<body>\r\n<p>Hello World</p>\r\n<amp-carousel width=\"400\" height=\"300\" layout=\"responsive\" type=\"slides\">\r\n  <amp-img src=\"https://loremflickr.com/400/300?random=1\" width=\"400\" height=\"300\" layout=\"responsive\" alt=\"\"></amp-img>\r\n  <amp-img src=\"https://loremflickr.com/400/300?random=2\" width=\"400\" height=\"300\" layout=\"responsive\" alt=\"\"></amp-img>\r\n</amp-carousel>\r\n</body>\r\n</html>`)
+	discard  io.WriteCloser = devNull{}
 )
 
 type devNull struct{}
@@ -41,9 +43,16 @@ func TestBuilder(t *testing.T) {
 	bldr.SetSubject("Test subject")
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
-	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPart(textPlain)
-	bldr.AddHTMLPart(textHTML, "./testdata/prwoman.png")
+
+	bldr.AddHeader("Message-ID: <test_message>")
+	mimeHeader := textproto.MIMEHeader{}
+	mimeHeader.Add("Content-Language", "ru")
+	mimeHeader.Add("Precedence", " bulk")
+	bldr.AddMIMEHeader(mimeHeader)
+
+	bldr.AddTextPart(textPart)
+	bldr.AddAMPPart(ampPart)
+	bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png")
 	bldr.AddAttachment("./testdata/knwoman.png")
 
 	//_ = bldr.Email("Id-123", func(Result) {})
@@ -52,15 +61,7 @@ func TestBuilder(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
 }
-
-//type writeCloser struct {
-//	bytes.Buffer
-//}
-//func (wc *writeCloser) Close() error {
-//	return nil
-//}
 
 func TestBuilderTemplate(t *testing.T) {
 	bldr := new(Builder)
@@ -103,8 +104,8 @@ func BenchmarkBuilder(b *testing.B) {
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPart(textPlain)
-	bldr.AddHTMLPart(textHTML)
+	bldr.AddTextPart(textPart)
+	bldr.AddHTMLPart(htmlPart)
 	var err error
 	for n := 0; n < b.N; n++ {
 		//_ = bldr.Email("Id-123", func(Result) {})
@@ -160,8 +161,8 @@ func BenchmarkBuilderAttachment(b *testing.B) {
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPart(textPlain)
-	bldr.AddHTMLPart(textHTML, "./testdata/prwoman.png")
+	bldr.AddTextPart(textPart)
+	bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png")
 	bldr.AddAttachment("./testdata/knwoman.png")
 	var err error
 	for n := 0; n < b.N; n++ {
@@ -181,8 +182,8 @@ func BenchmarkBuilderDKIM(b *testing.B) {
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPart(textPlain)
-	bldr.AddHTMLPart(textHTML)
+	bldr.AddTextPart(textPart)
+	bldr.AddHTMLPart(htmlPart)
 	var err error
 	for n := 0; n < b.N; n++ {
 		//_ = bldr.Email("Id-123", func(Result) {})
@@ -201,8 +202,8 @@ func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
-	bldr.AddTextPart(textPlain)
-	bldr.AddHTMLPart(textHTML, "./testdata/prwoman.png")
+	bldr.AddTextPart(textPart)
+	bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png")
 	bldr.AddAttachment("./testdata/knwoman.png")
 	var err error
 	for n := 0; n < b.N; n++ {
@@ -216,7 +217,7 @@ func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
 }
 
 func TestDelimitWriter(t *testing.T) {
-	m := []byte(textHTML)
+	m := []byte(htmlPart)
 	w := &bytes.Buffer{}
 	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 16)
 	encoder := base64.NewEncoder(base64.StdEncoding, dwr)

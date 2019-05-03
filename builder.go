@@ -13,6 +13,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/textproto"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,6 +43,7 @@ type Builder struct {
 	subjectFunc      func(io.Writer) error
 	replyTo          string
 	headers          []string
+	mimeHeader       textproto.MIMEHeader
 	htmlPart         []byte
 	textPart         []byte
 	ampPart          []byte
@@ -51,11 +53,7 @@ type Builder struct {
 	htmlRelatedFiles []*os.File
 	ampRelatedFiles  []*os.File
 	attachments      []*os.File
-	//markerGlobal     marker
-	//markerAlt        marker
-	//markerHTML       marker
-	//markerAMP        marker
-	dkim builderDKIM
+	dkim             builderDKIM
 }
 
 type builderDKIM struct {
@@ -132,6 +130,11 @@ func (b *Builder) AddHeader(headers ...string) {
 	for i := range headers {
 		b.headers = append(b.headers, headers[i]+"\r\n")
 	}
+}
+
+// AddMIMEHeader add extra mime header to email
+func (b *Builder) AddMIMEHeader(mimeHeader textproto.MIMEHeader) {
+	b.mimeHeader = mimeHeader
 }
 
 // AddHTMLPart add text/html content with related file.
@@ -459,22 +462,6 @@ func (b *Builder) writeHTMLPartHeader(w io.Writer) error {
 	return err
 }
 
-func (b *Builder) getHeaderValue(key string) (string, error) {
-	switch strings.ToLower(key) {
-	case "from":
-		return b.From, nil
-	case "to":
-		return b.To, nil
-	case "subject":
-		subj, err := b.makeSubject()
-		if err != nil {
-			return "", err
-		}
-		return string(subj) + "\r\n", nil
-	}
-	return "", fmt.Errorf("unknow header %s", key)
-}
-
 func (b *Builder) writeHeaders(w io.Writer) error {
 	if _, err := w.Write([]byte("From: " + b.From + "\r\n")); err != nil {
 		return err
@@ -495,6 +482,25 @@ func (b *Builder) writeHeaders(w io.Writer) error {
 	}
 	for i := range b.headers {
 		if _, err := w.Write([]byte(b.headers[i])); err != nil {
+			return err
+		}
+	}
+	for k, v := range b.mimeHeader {
+		if _, err := w.Write([]byte(k + ": ")); err != nil {
+			return err
+		}
+		for i := range v {
+			if len(v) == (i + 1) {
+				if _, err := w.Write([]byte(" " + v[i])); err != nil {
+					return err
+				}
+			} else {
+				if _, err := w.Write([]byte(" " + v[i] + ";\r\n\t")); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := w.Write([]byte("\r\n")); err != nil {
 			return err
 		}
 	}

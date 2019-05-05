@@ -442,7 +442,7 @@ func (b *Builder) writeAMPPartHeader(w io.Writer) error {
 			return err
 		}
 	}
-	_, err := w.Write([]byte("Content-Type: text/x-amp-html; charset=\"utf-8\"\r\n\r\n"))
+	_, err := w.Write([]byte("Content-Type: text/x-amp-html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"))
 	return err
 }
 
@@ -600,12 +600,16 @@ func (b *Builder) writeHTMLPart(w io.Writer) error {
 
 // AMP part
 func (b *Builder) writeAMPPart(w io.Writer) error {
-	if _, err := w.Write(b.ampPart); err != nil {
+	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
+	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
+	defer b64Enc.Close()
+
+	if _, err := b64Enc.Write(b.ampPart); err != nil {
 		return err
 	}
 
 	if b.ampFunc != nil {
-		if err := b.ampFunc(w); err != nil {
+		if err := b.ampFunc(b64Enc); err != nil {
 			return err
 		}
 	}
@@ -613,7 +617,7 @@ func (b *Builder) writeAMPPart(w io.Writer) error {
 		return err
 	}
 
-	if len(b.ampRelatedFiles) == 0 {
+	if !b.hasAMPRelated() {
 		if _, err := w.Write([]byte("\r\n")); err != nil {
 			return err
 		}

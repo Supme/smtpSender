@@ -318,9 +318,6 @@ func (b *Builder) multipartBuilder(w io.Writer) error {
 		if err := b.writeAlternativeHeader(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("\r\n")); err != nil {
-			return err
-		}
 		if err := b.alternativeBuilder(w); err != nil {
 			return err
 		}

@@ -318,7 +318,7 @@ func (b *Builder) multipartBuilder(w io.Writer) error {
 		if err := b.writeAlternativeHeader(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
+		if _, err := w.Write([]byte("\r\n")); err != nil {
 			return err
 		}
 		if err := b.alternativeBuilder(w); err != nil {
@@ -369,6 +369,7 @@ func (b *Builder) multipartBuilder(w io.Writer) error {
 	if err := b.writeAttachment(w); err != nil {
 		return err
 	}
+
 	if _, err := w.Write([]byte(boundaryMixedEnd)); err != nil {
 		return err
 	}
@@ -417,8 +418,7 @@ func (b *Builder) alternativeBuilder(w io.Writer) error {
 		return err
 	}
 
-	_, err := w.Write([]byte("\r\n"))
-	return err
+	return nil
 }
 
 func (b *Builder) writeMultipartHeader(w io.Writer) error {
@@ -445,7 +445,7 @@ func (b *Builder) writeAMPPartHeader(w io.Writer) error {
 			return err
 		}
 	}
-	_, err := w.Write([]byte("Content-Type: text/x-amp-html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"))
+	_, err := w.Write([]byte("Content-Type: text/x-amp-html; charset=\"utf-8\"\r\n\r\n"))
 	return err
 }
 
@@ -566,8 +566,14 @@ func (b *Builder) writeHTMLPart(w io.Writer) error {
 			return err
 		}
 	}
-	if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
+	if _, err := w.Write([]byte("\r\n")); err != nil {
 		return err
+	}
+
+	if len(b.htmlRelatedFiles) == 0 {
+		if _, err := w.Write([]byte("\r\n")); err != nil {
+			return err
+		}
 	}
 
 	// related files
@@ -597,21 +603,23 @@ func (b *Builder) writeHTMLPart(w io.Writer) error {
 
 // AMP part
 func (b *Builder) writeAMPPart(w io.Writer) error {
-	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
-	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-	defer b64Enc.Close()
-
-	if _, err := b64Enc.Write(b.ampPart); err != nil {
+	if _, err := w.Write(b.ampPart); err != nil {
 		return err
 	}
 
 	if b.ampFunc != nil {
-		if err := b.ampFunc(b64Enc); err != nil {
+		if err := b.ampFunc(w); err != nil {
 			return err
 		}
 	}
-	if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
+	if _, err := w.Write([]byte("\r\n")); err != nil {
 		return err
+	}
+
+	if len(b.ampRelatedFiles) == 0 {
+		if _, err := w.Write([]byte("\r\n")); err != nil {
+			return err
+		}
 	}
 
 	// related files

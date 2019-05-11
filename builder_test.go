@@ -219,7 +219,7 @@ func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
 func TestDelimitWriter(t *testing.T) {
 	m := []byte(htmlPart)
 	w := &bytes.Buffer{}
-	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 16)
+	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 16)
 	encoder := base64.NewEncoder(base64.StdEncoding, dwr)
 	_, err := encoder.Write(m)
 	if err != nil {
@@ -239,7 +239,7 @@ func TestDelimitWriter(t *testing.T) {
 func BenchmarkBase64DelimitWriter(b *testing.B) {
 	m := []byte("<h1>Hello, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
 	w := ioutil.Discard
-	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 8)
+	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 8)
 	encoder := base64.NewEncoder(base64.StdEncoding, dwr)
 	for n := 0; n < b.N; n++ {
 		_, err := encoder.Write(m)
@@ -256,7 +256,7 @@ func BenchmarkBase64DelimitWriter(b *testing.B) {
 func BenchmarkDelimitWriter(b *testing.B) {
 	m := []byte("<h1>Hello, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
 	w := ioutil.Discard
-	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 8)
+	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 8)
 	for n := 0; n < b.N; n++ {
 		_, err := dwr.Write(m)
 		if err != nil {

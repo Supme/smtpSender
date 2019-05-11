@@ -27,9 +27,6 @@ const (
 	boundaryHTMLRelated      = "===============_HTML_RELATED=="
 	boundaryHTMLRelatedBegin = "--" + boundaryHTMLRelated + "\r\n"
 	boundaryHTMLRelatedEnd   = "--" + boundaryHTMLRelated + "--\r\n"
-	boundaryAMPRelated       = "===============_AMP_RELATED=="
-	boundaryAMPRelatedBegin  = "--" + boundaryAMPRelated + "\r\n"
-	boundaryAMPRelatedEnd    = "--" + boundaryAMPRelated + "--\r\n"
 	boundaryAlternative      = "===============_ALTERNATIVE=="
 	boundaryAlternativeBegin = "--" + boundaryAlternative + "\r\n"
 	boundaryAlternativeEnd   = "--" + boundaryAlternative + "--\r\n"
@@ -51,7 +48,6 @@ type Builder struct {
 	textFunc         func(io.Writer) error
 	ampFunc          func(io.Writer) error
 	htmlRelatedFiles []*os.File
-	ampRelatedFiles  []*os.File
 	attachments      []*os.File
 	dkim             builderDKIM
 }
@@ -63,35 +59,41 @@ type builderDKIM struct {
 }
 
 // SetDKIM sign DKIM parameters
-func (b *Builder) SetDKIM(domain, selector string, privateKey []byte) {
+func (b *Builder) SetDKIM(domain, selector string, privateKey []byte) *Builder {
 	b.dkim.domain = domain
 	b.dkim.selector = selector
 	b.dkim.privateKey = privateKey
+	return b
 }
 
 // SetFrom email sender
-func (b *Builder) SetFrom(name, email string) {
+func (b *Builder) SetFrom(name, email string) *Builder {
 	b.From = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
+	return b
 }
 
 // SetTo email recipient
-func (b *Builder) SetTo(name, email string) {
+func (b *Builder) SetTo(name, email string) *Builder {
 	b.To = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
+	return b
 }
 
 // SetSubject set email subject
-func (b *Builder) SetSubject(text string) {
+func (b *Builder) SetSubject(text string) *Builder {
 	b.Subject = text
+	return b
 }
 
 // AddSubjectFunc add writer function for subject
-func (b *Builder) AddSubjectFunc(f func(io.Writer) error) {
+func (b *Builder) AddSubjectFunc(f func(io.Writer) error) *Builder {
 	b.subjectFunc = f
+	return b
 }
 
 // AddReplyTo add Reply-To header
-func (b *Builder) AddReplyTo(name, email string) {
+func (b *Builder) AddReplyTo(name, email string) *Builder {
 	b.replyTo = email
+	return b
 }
 
 // AddHTMLFunc add writer function for HTML
@@ -108,33 +110,29 @@ func (b *Builder) AddHTMLFunc(f func(io.Writer) error, file ...string) error {
 }
 
 // AddTextFunc add writer function for plain text
-func (b *Builder) AddTextFunc(f func(io.Writer) error) {
+func (b *Builder) AddTextFunc(f func(io.Writer) error) *Builder {
 	b.textFunc = f
+	return b
 }
 
 // AddAMPFunc add writer function for AMP HTML
-func (b *Builder) AddAMPFunc(f func(io.Writer) error, file ...string) error {
-	for i := range file {
-		file, err := os.Open(file[i])
-		if err != nil {
-			return err
-		}
-		b.ampRelatedFiles = append(b.ampRelatedFiles, file)
-	}
+func (b *Builder) AddAMPFunc(f func(io.Writer) error) *Builder {
 	b.ampFunc = f
-	return nil
+	return b
 }
 
 // AddHeader add extra header to email
-func (b *Builder) AddHeader(headers ...string) {
+func (b *Builder) AddHeader(headers ...string) *Builder {
 	for i := range headers {
 		b.headers = append(b.headers, headers[i]+"\r\n")
 	}
+	return b
 }
 
 // AddMIMEHeader add extra mime header to email
-func (b *Builder) AddMIMEHeader(mimeHeader textproto.MIMEHeader) {
+func (b *Builder) AddMIMEHeader(mimeHeader textproto.MIMEHeader) *Builder {
 	b.mimeHeader = mimeHeader
+	return b
 }
 
 // AddHTMLPart add text/html content with related file.
@@ -163,8 +161,9 @@ func (b *Builder) AddTextHTML(html []byte, file ...string) (err error) {
 }
 
 // AddTextPart add plain text
-func (b *Builder) AddTextPart(text []byte) {
+func (b *Builder) AddTextPart(text []byte) *Builder {
 	b.textPart = text
+	return b
 }
 
 // AddTextPlain add plain text
@@ -174,16 +173,9 @@ func (b *Builder) AddTextPlain(text []byte) {
 }
 
 // AddAMPPart add text/x-amp-html content with related file.
-func (b *Builder) AddAMPPart(amp []byte, file ...string) (err error) {
-	for i := range file {
-		file, err := os.Open(file[i])
-		if err != nil {
-			return err
-		}
-		b.ampRelatedFiles = append(b.ampRelatedFiles, file)
-	}
+func (b *Builder) AddAMPPart(amp []byte) *Builder {
 	b.ampPart = amp
-	return nil
+	return b
 }
 
 // AddAttachment add attachment files to email
@@ -199,71 +191,119 @@ func (b *Builder) AddAttachment(file ...string) error {
 }
 
 // Email return Email struct with render function
-func (b *Builder) Email(id string, resultFunc func(Result)) Email {
+func (b *Builder) Email(id string, resultFunc func(Result)) *Email {
 	email := new(Email)
 	email.ID = id
 	email.From = b.From
 	email.To = b.To
 	email.ResultFunc = resultFunc
-	email.WriteCloser = func(w io.WriteCloser) (err error) {
-		defer w.Close()
-		if b.dkim.domain == "" {
-			err = b.headersBuilder(w)
-			if err != nil {
-				return err
-			}
-			err = b.bodyBuilder(w)
-			return err
-		}
+	email.WriteCloser = b.emailWriteCloser
+	return email
+}
 
-		block, _ := pem.Decode(b.dkim.privateKey)
-		if block == nil {
-			return errors.New("dkim: cannot decode key")
-		}
-		var privateKey crypto.Signer
-		switch strings.ToUpper(block.Type) {
-		case "RSA PRIVATE KEY":
-			privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
-			if err != nil {
-				return fmt.Errorf("error RSA private key: '%s'", err)
-			}
-		case "EDDSA PRIVATE KEY":
-			if len(block.Bytes) != ed25519.PrivateKeySize {
-				return fmt.Errorf("invalid Ed25519 private key size")
-			}
-			privateKey = ed25519.PrivateKey(block.Bytes)
-		default:
-			return fmt.Errorf("unknown private key type: '%v'", block.Type)
-		}
-		signer, err := dkim.NewSigner(&dkim.SignOptions{
-			Domain:   b.dkim.domain,
-			Selector: b.dkim.selector,
-			HeaderKeys: []string{
-				"From",
-				"Subject",
-				"To",
-			},
-			Signer:   privateKey,
-		})
-		if err := b.headersBuilder(signer); err != nil {
-			return err
-		}
-		if err := b.bodyBuilder(signer);  err != nil {
-			return err
-		}
-		if err := signer.Close(); err != nil {
-			return err
-		}
-		if _, err := w.Write([]byte(signer.Signature())); err != nil {
-			return err
-		}
+func (b *Builder) emailWriteCloser(w io.WriteCloser) error {
+	var err error
+	defer w.Close()
 
-		if err := b.headersBuilder(w); err != nil {
+	if b.dkim.domain == "" {
+		err = b.headersBuilder(w)
+		if err != nil {
 			return err
 		}
-		return b.bodyBuilder(w)
+		err = b.bodyBuilder(w)
+		return err
 	}
-	return *email
+
+	block, _ := pem.Decode(b.dkim.privateKey)
+	if block == nil {
+		return errors.New("dkim: cannot decode key")
+	}
+	var privateKey crypto.Signer
+	switch strings.ToUpper(block.Type) {
+	case "RSA PRIVATE KEY":
+		privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return fmt.Errorf("error RSA private key: '%s'", err)
+		}
+	case "EDDSA PRIVATE KEY":
+		if len(block.Bytes) != ed25519.PrivateKeySize {
+			return fmt.Errorf("invalid Ed25519 private key size")
+		}
+		privateKey = ed25519.PrivateKey(block.Bytes)
+	default:
+		return fmt.Errorf("unknown private key type: '%v'", block.Type)
+	}
+	options := dkim.SignOptions{
+		Domain:   b.dkim.domain,
+		Selector: b.dkim.selector,
+		HeaderKeys: []string{
+			"From",
+			"Subject",
+			"To",
+		},
+		Signer: privateKey,
+	}
+
+	// dkimEmailDoubleWriteCloser
+	// BenchmarkBuilderDKIM-2             	    1000	   1689315 ns/op	   52760 B/op	    1130 allocs/op
+	// BenchmarkBuilderAttachmentDKIM-2   	       1	1020528457 ns/op	 9910984 B/op	 1214748 allocs/op
+	//
+	// dkimEmailBufferWriteCloser
+	// BenchmarkBuilderDKIM-2             	     500	   2303593 ns/op	   52805 B/op	    1107 allocs/op
+	// BenchmarkBuilderAttachmentDKIM-2   	       1	1396323806 ns/op	11647864 B/op	 1214690 allocs/op
+	return b.dkimEmailDoubleWriteCloser(w, &options)
+}
+
+func (b *Builder) dkimEmailDoubleWriteCloser(w io.WriteCloser, options *dkim.SignOptions) error {
+	signer, err := dkim.NewSigner(options)
+	if err != nil {
+		return err
+	}
+	if err := b.headersBuilder(signer); err != nil {
+		return err
+	}
+	if err := b.bodyBuilder(signer); err != nil {
+		return err
+	}
+	if err := signer.Close(); err != nil {
+		return err
+	}
+
+	if _, err := w.Write([]byte(signer.Signature())); err != nil {
+		return err
+	}
+
+	if err := b.headersBuilder(w); err != nil {
+		return err
+	}
+	return b.bodyBuilder(w)
+}
+
+func (b *Builder) dkimEmailBufferWriteCloser(w io.WriteCloser, options *dkim.SignOptions) error {
+	s, err := dkim.NewSigner(options)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	var buf bytes.Buffer
+	mw := io.MultiWriter(&buf, s)
+
+	if err := b.headersBuilder(mw); err != nil {
+		return err
+	}
+	if err := b.bodyBuilder(mw); err != nil {
+		return err
+	}
+	if err := s.Close(); err != nil {
+		return err
+	}
+
+	if _, err := io.WriteString(w, s.Signature()); err != nil {
+		return err
+	}
+	_, err = io.Copy(w, &buf)
+	return err
 }
 
 func (b *Builder) headersBuilder(w io.Writer) error {
@@ -434,14 +474,6 @@ func (b *Builder) writeTextPartHeader(w io.Writer) error {
 }
 
 func (b *Builder) writeAMPPartHeader(w io.Writer) error {
-	if b.hasAMPRelated() {
-		if _, err := w.Write([]byte("Content-Type: multipart/related; boundary=\"" + boundaryAMPRelated + "\"\r\n\r\n")); err != nil {
-			return err
-		}
-		if _, err := w.Write([]byte(boundaryAMPRelatedBegin)); err != nil {
-			return err
-		}
-	}
 	_, err := w.Write([]byte("Content-Type: text/x-amp-html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"))
 	return err
 }
@@ -531,9 +563,8 @@ func (b *Builder) makeSubject() ([]byte, error) {
 
 // Text part
 func (b *Builder) writeTextPart(w io.Writer) error {
-	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
+	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-	defer b64Enc.Close()
 
 	if _, err := b64Enc.Write(b.textPart); err != nil {
 		return err
@@ -544,15 +575,39 @@ func (b *Builder) writeTextPart(w io.Writer) error {
 			return err
 		}
 	}
-	_, err := w.Write([]byte("\r\n\r\n"))
-	return err
+
+	if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AMP part
+func (b *Builder) writeAMPPart(w io.Writer) error {
+	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
+	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
+
+	if _, err := b64Enc.Write(b.ampPart); err != nil {
+		return err
+	}
+
+	if b.ampFunc != nil {
+		if err := b.ampFunc(b64Enc); err != nil {
+			return err
+		}
+	}
+	if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // HTML part
 func (b *Builder) writeHTMLPart(w io.Writer) error {
-	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
+	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-	defer b64Enc.Close()
 
 	if _, err := b64Enc.Write(b.htmlPart); err != nil {
 		return err
@@ -582,7 +637,7 @@ func (b *Builder) writeHTMLPart(w io.Writer) error {
 			return err
 		}
 
-		if err := fileBase64Writer(w, b.htmlRelatedFiles[i], "inline"); err != nil {
+		if err := fileWriter(w, b.htmlRelatedFiles[i], "inline"); err != nil {
 			return err
 		}
 		if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
@@ -598,63 +653,12 @@ func (b *Builder) writeHTMLPart(w io.Writer) error {
 	return nil
 }
 
-// AMP part
-func (b *Builder) writeAMPPart(w io.Writer) error {
-	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
-	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-	defer b64Enc.Close()
-
-	if _, err := b64Enc.Write(b.ampPart); err != nil {
-		return err
-	}
-
-	if b.ampFunc != nil {
-		if err := b.ampFunc(b64Enc); err != nil {
-			return err
-		}
-	}
-	if _, err := w.Write([]byte("\r\n")); err != nil {
-		return err
-	}
-
-	if !b.hasAMPRelated() {
-		if _, err := w.Write([]byte("\r\n")); err != nil {
-			return err
-		}
-	}
-
-	// related files
-	for i := range b.ampRelatedFiles {
-		if _, err := w.Write([]byte("\r\n")); err != nil {
-			return err
-		}
-		if _, err := w.Write([]byte(boundaryAMPRelatedBegin)); err != nil {
-			return err
-		}
-
-		if err := fileBase64Writer(w, b.ampRelatedFiles[i], "inline"); err != nil {
-			return err
-		}
-		if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
-			return err
-		}
-	}
-
-	if b.hasAMPRelated() {
-		if _, err := w.Write([]byte(boundaryAMPRelatedEnd)); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (b *Builder) writeAttachment(w io.Writer) error {
 	for i := range b.attachments {
 		if _, err := w.Write([]byte(boundaryMixedBegin)); err != nil {
 			return err
 		}
-		if err := fileBase64Writer(w, b.attachments[i], "attachment"); err != nil {
+		if err := fileWriter(w, b.attachments[i], "attachment"); err != nil {
 			return err
 		}
 		if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
@@ -694,10 +698,6 @@ func (b *Builder) hasHTMLRelated() bool {
 	return b.hasHTML() && (len(b.htmlRelatedFiles) > 0)
 }
 
-func (b *Builder) hasAMPRelated() bool {
-	return b.hasAMP() && (len(b.ampRelatedFiles) > 0)
-}
-
 func (b *Builder) hasAttachment() bool {
 	return len(b.attachments) > 0
 }
@@ -712,34 +712,7 @@ func (b *Builder) isMultipart() bool {
 	return c > 1
 }
 
-type delimitWriter struct {
-	n      int
-	cnt    int
-	dr     []byte
-	writer io.Writer
-}
-
-func newDelimitWriter(writer io.Writer, dr []byte, cnt int) *delimitWriter {
-	return &delimitWriter{n: 0, cnt: cnt, dr: dr, writer: writer}
-}
-
-func (w *delimitWriter) Write(p []byte) (n int, err error) {
-	for i := range p {
-		_, err = w.writer.Write(p[i : i+1])
-		if err != nil {
-			break
-		}
-		if w.n++; w.n%w.cnt == 0 {
-			_, err = w.writer.Write(w.dr)
-			if err != nil {
-				break
-			}
-		}
-	}
-	return w.n, err
-}
-
-func fileBase64Writer(w io.Writer, f *os.File, disposition string) error {
+func fileWriter(w io.Writer, f *os.File, disposition string) error {
 	var err error
 	var info os.FileInfo
 	name := filepath.Base(f.Name())
@@ -771,12 +744,8 @@ func fileBase64Writer(w io.Writer, f *os.File, disposition string) error {
 		return err
 	}
 
-	dwr := newDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
+	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-
-	if _, err := io.Copy(b64Enc, f); err != nil {
-		return err
-	}
-
-	return b64Enc.Close()
+	_, err = io.Copy(b64Enc, f)
+	return err
 }

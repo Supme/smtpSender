@@ -58,6 +58,11 @@ type builderDKIM struct {
 	privateKey []byte
 }
 
+// NewBuilder return new Builder
+func NewBuilder() *Builder {
+	return &Builder{}
+}
+
 // SetDKIM sign DKIM parameters
 func (b *Builder) SetDKIM(domain, selector string, privateKey []byte) *Builder {
 	b.dkim.domain = domain

@@ -2,6 +2,7 @@ package smtpSender
 
 import "io"
 
+// DelimitWriter Writer with delimiter bytes
 type DelimitWriter struct {
 	n      int
 	cnt    int
@@ -9,10 +10,12 @@ type DelimitWriter struct {
 	writer io.Writer
 }
 
+// NewDelimitWriter get writer, delimit bytes and count through which to add a delimit bytes. Return DelimitWriter
 func NewDelimitWriter(writer io.Writer, delimiter []byte, cnt int) *DelimitWriter {
 	return &DelimitWriter{n: 0, cnt: cnt, dr: delimiter, writer: writer}
 }
 
+// Write write delimiter function
 func (w *DelimitWriter) Write(p []byte) (int, error) {
 	var err error
 	for i := range p {

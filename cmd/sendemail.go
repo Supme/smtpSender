@@ -32,13 +32,13 @@ var (
 	htmlRelatedFiles string
 	attachmentFiles  string
 	message          string
-	hostname string
+	hostname         string
 	smtpServer       string
 	smtpUser         string
 	smtpPassword     string
-	dkimDomain string
-	dkimSelector string
-	dkimKeyFile string
+	dkimDomain       string
+	dkimSelector     string
+	dkimKeyFile      string
 )
 
 type buffer struct {
@@ -82,7 +82,7 @@ func main() {
 		fmt.Printf(
 			"Use parameters:\r\n\tfromEmail: %s\r\n\tfromName: %s\r\n\ttoEmail: %s\r\n\ttoName: %s\r\n\tsubject: %s\r\n\ttextPartFile: %s\r\n\tampPartFile: %s\r\n\thtmlPartFile: %s\r\n\thtmlRelatedFiles: %s\r\n\tattachmentFiles: %s\r\n\tmessage: %s\r\n\thostname: %s\r\n\tsmtpServer: %s\r\n\tsmtpUser: %s\r\n\tsmtpPassword: %s\r\n\tdkimDomain: %s\r\n\tdkimSelector: %s\r\n\tdkimKeyFile: %s\r\n",
 			fromEmail, fromName, toEmail, toName, subject, textPartFile, ampPartFile, htmlPartFile, htmlRelatedFiles, attachmentFiles, message, hostname, smtpServer, smtpUser, smtpPassword, dkimDomain, dkimSelector, dkimKeyFile,
-			)
+		)
 	}
 
 	bldr := smtpSender.NewBuilder()

@@ -4,6 +4,7 @@
 
 See cmd/sendemail.go file for example
 ```
+go build -o sendemail sendemail.go
 sendemail -h
 sendemail -f from@domain.tld -t to@domain.tld -s "Hello subject!" -m "Hello, world!"
 sendemail -f from@domain.tld -t to@domain.tld -s "Hello subject!" -html ./message.html -amp ./amp.html -txt ./message.txt

@@ -2,6 +2,12 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/Supme/smtpSender)](https://goreportcard.com/report/github.com/Supme/smtpSender)
 
+See cmd/sendemail.go file for example
+```
+sendemail -h
+sendemail -f from@domain.tld -t to@domain.tld -s "Hello subject!" -m "Hello, world!"
+sendemail -f from@domain.tld -t to@domain.tld -s "Hello subject!" -html ./message.html -amp ./amp.html -txt ./message.txt
+```
 
 Send email
 ```
@@ -12,8 +18,8 @@ bldr := &smtpSender.Builder{
 }
 bldr.SetDKIM("domain.tld", "test", myPrivateKey)
 bldr.AddHeader("Content-Language: ru", "Message-ID: <Id-123>", "Precedence: bulk")
-bldr.AddTextPlain("textPlain")
-bldr.AddTextHTML("<h1>textHTML</h1><img src=\"cid:image.gif\"/>", "./image.gif")
+bldr.AddTextPart("textPlain")
+bldr.AddHTMLPart("<h1>textHTML</h1><img src=\"cid:image.gif\"/>", "./image.gif")
 bldr.AddAttachment("./file.zip", "./music.mp3")
 email := bldr.Email("Id-123", func(result smtpSender.Result){
 	fmt.Printf("Result for email id '%s' duration: %f sec result: %v\n", result.ID, result.Duration.Seconds(), result.Err)
@@ -55,7 +61,7 @@ for i := 1; i <= 50; i++ {
     bldr.SetFrom("Sender", "sender@domain.tld")
     bldr.SetTo("Me", "me+test@mail.tld")
     bldr.SetSubject("Test subject " + id)
-    bldr.AddTextHTML("<h1>textHTML</h1><img src=\"cid:image.gif\"/>", "./image.gif")
+    bldr.AddHTMLPart("<h1>textHTML</h1><img src=\"cid:image.gif\"/>", "./image.gif")
     email := bldr.Email(id, func(result smtpSender.Result) {
        	fmt.Printf("Result for email id '%s' duration: %f sec result: %v\n", result.ID, result.Duration.Seconds(), result.Err)
        	wg.Done()
@@ -122,8 +128,8 @@ for i := 1; i <= 15; i++ {
 	bldr.SetSubject("Test subject " + id)
 	bldr.SetDKIM("domain.tld", "test", myPrivateKey)
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <Id-123>", "Precedence: bulk")
-	bldr.AddTextPlain("textPlain")
-	bldr.AddTextHTML("<h1>textHTML</h1><img src=\"cid:image.gif\"/>", "./image.gif")
+	bldr.AddTextPart("textPlain")
+	bldr.AddHTMLPart("<h1>textHTML</h1><img src=\"cid:image.gif\"/>", "./image.gif")
 	bldr.AddAttachment("./file.zip", "./music.mp3")
 	wg.Add(1)
 	email := bldr.Email(id, func(result smtpSender.Result) {

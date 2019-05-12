@@ -84,8 +84,8 @@ func (b *Builder) SetTo(name, email string) *Builder {
 }
 
 // SetSubject set email subject
-func (b *Builder) SetSubject(text string) *Builder {
-	b.Subject = text
+func (b *Builder) SetSubject(subject string) *Builder {
+	b.Subject = subject
 	return b
 }
 

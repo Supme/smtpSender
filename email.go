@@ -57,8 +57,11 @@ func (e *Email) Send(connect *Connect, server *SMTPserver) {
 		err    error
 	)
 	start := time.Now()
-	e.parseEmail()
-
+	err = e.parseEmail()
+	if err != nil {
+		e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("513 %v", err), Duration: time.Since(start)})
+		return
+	}
 	if server == nil {
 		client, err = connect.newClient(e.toDomain, true)
 	} else {
@@ -72,25 +75,20 @@ func (e *Email) Send(connect *Connect, server *SMTPserver) {
 		client, err = connect.newClient(server.Host, false)
 	}
 	if err != nil {
-		e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("421 %v", err), Duration: time.Now().Sub(start)})
+		e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("421 %v", err), Duration: time.Since(start)})
 		return
 	}
 
 	err = e.send(auth, client)
-	e.ResultFunc(Result{ID: e.ID, Err: err, Duration: time.Now().Sub(start)})
-	return
+	e.ResultFunc(Result{ID: e.ID, Err: err, Duration: time.Since(start)})
 }
 
 func (e *Email) send(auth smtp.Auth, client *smtp.Client) error {
 	var (
-		err              error
-		testHookStartTLS func(*tls.Config)
+		err error
 	)
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		config := &tls.Config{ServerName: e.toDomain, InsecureSkipVerify: true}
-		if testHookStartTLS != nil {
-			testHookStartTLS(config)
-		}
 		if err = client.StartTLS(config); err != nil {
 			return err
 		}
@@ -111,8 +109,8 @@ func (e *Email) send(auth smtp.Auth, client *smtp.Client) error {
 	}
 
 	defer func() {
-		client.Quit()
-		client.Close()
+		_ = client.Quit()
+		_ = client.Close()
 	}()
 
 	w, err := client.Data()
@@ -151,14 +149,14 @@ var (
 
 func splitEmail(e string) (name, email, domain string, err error) {
 	s := strings.TrimSpace(e)
-	if m := splitEmailFullStringRe.FindStringSubmatch(s); m != nil && len(m) == 4 {
+	if m := splitEmailFullStringRe.FindStringSubmatch(s); len(m) == 4 {
 		name = strings.TrimSpace(m[1])
 		email = strings.ToLower(strings.TrimSpace(m[2]))
 		domain = strings.TrimRight(strings.ToLower(strings.TrimSpace(m[3])), ".")
-	} else if m := splitEmailOnlyStringRe.FindStringSubmatch(s); m != nil && len(m) == 3 {
+	} else if m := splitEmailOnlyStringRe.FindStringSubmatch(s); len(m) == 3 {
 		email = strings.ToLower(strings.TrimSpace(m[1]))
 		domain = strings.TrimRight(strings.ToLower(strings.TrimSpace(m[2])), ".")
-	} else if m := splitEmailRe.FindStringSubmatch(s); m != nil && len(m) == 3 {
+	} else if m := splitEmailRe.FindStringSubmatch(s); len(m) == 3 {
 		email = strings.ToLower(strings.TrimSpace(m[1]))
 		domain = strings.TrimRight(strings.ToLower(strings.TrimSpace(m[2])), ".")
 	} else {

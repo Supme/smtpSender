@@ -52,8 +52,12 @@ func TestBuilder(t *testing.T) {
 
 	bldr.AddTextPart(textPart)
 	bldr.AddAMPPart(ampPart)
-	bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png")
-	bldr.AddAttachment("./testdata/knwoman.png")
+	if err := bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png"); err != nil {
+		t.Error(err)
+	}
+	if err := bldr.AddAttachment("./testdata/knwoman.png"); err != nil {
+		t.Error(err)
+	}
 
 	//_ = bldr.Email("Id-123", func(Result) {})
 	email := bldr.Email("Id-123", func(Result) {})
@@ -68,7 +72,9 @@ func TestBuilderTemplate(t *testing.T) {
 	data := map[string]string{"Name": "Вася"}
 
 	subj := tmplText.New("Text")
-	subj.Parse("Test subject for {{.Name}}")
+	if _, err := subj.Parse("Test subject for {{.Name}}"); err != nil {
+		t.Error(err)
+	}
 	bldr.AddSubjectFunc(func(w io.Writer) error {
 		return subj.Execute(w, data)
 	})
@@ -79,18 +85,23 @@ func TestBuilderTemplate(t *testing.T) {
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
 
 	html := tmplHTML.New("HTML")
-	html.Parse(`<h1>This 'HTML' template.</h1><h2>Hello {{.Name}}</h2>`)
+	if _, err := html.Parse(`<h1>This 'HTML' template.</h1><h2>Hello {{.Name}}</h2>`); err != nil {
+		t.Error(err)
+	}
 	text := tmplText.New("Text")
-	text.Parse("This 'Text' template. Hello {{.Name}}")
+	if _, err := text.Parse("This 'Text' template. Hello {{.Name}}"); err != nil {
+		t.Error(err)
+	}
 
 	bldr.AddTextFunc(func(w io.Writer) error {
 		return text.Execute(w, data)
 	})
-	bldr.AddHTMLFunc(func(w io.Writer) error {
+	if err := bldr.AddHTMLFunc(func(w io.Writer) error {
 		return html.Execute(w, data)
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 
-	//_ = bldr.Email("Id-123", func(Result) {})
 	email := bldr.Email("Id-123", func(Result) {})
 	err := email.WriteCloser(discard)
 	if err != nil {
@@ -105,10 +116,11 @@ func BenchmarkBuilder(b *testing.B) {
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
 	bldr.AddTextPart(textPart)
-	bldr.AddHTMLPart(htmlPart)
+	if err := bldr.AddHTMLPart(htmlPart); err != nil {
+		b.Error(err)
+	}
 	var err error
 	for n := 0; n < b.N; n++ {
-		//_ = bldr.Email("Id-123", func(Result) {})
 		email := bldr.Email("Id-123", func(Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
@@ -122,7 +134,9 @@ func BenchmarkBuilderTemplate(b *testing.B) {
 	data := map[string]string{"Name": "Вася"}
 
 	subj := tmplText.New("Text")
-	subj.Parse("Test subject for {{.Name}}")
+	if _, err := subj.Parse("Test subject for {{.Name}}"); err != nil {
+		b.Error(err)
+	}
 	bldr.AddSubjectFunc(func(w io.Writer) error {
 		return subj.Execute(w, data)
 	})
@@ -133,16 +147,22 @@ func BenchmarkBuilderTemplate(b *testing.B) {
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
 
 	html := tmplHTML.New("HTML")
-	html.Parse(`<h1>This 'HTML' template.</h1><h2>Hello {{.Name}}</h2>`)
+	if _, err := html.Parse(`<h1>This 'HTML' template.</h1><h2>Hello {{.Name}}</h2>`); err != nil {
+		b.Error(err)
+	}
 	text := tmplText.New("Text")
-	text.Parse("This 'Text' template. Hello {{.Name}}")
+	if _, err := text.Parse("This 'Text' template. Hello {{.Name}}"); err != nil {
+		b.Error(err)
+	}
 
 	bldr.AddTextFunc(func(w io.Writer) error {
 		return text.Execute(w, data)
 	})
-	bldr.AddHTMLFunc(func(w io.Writer) error {
+	if err := bldr.AddHTMLFunc(func(w io.Writer) error {
 		return html.Execute(w, data)
-	})
+	}); err != nil {
+		b.Error(err)
+	}
 
 	var err error
 	for n := 0; n < b.N; n++ {
@@ -162,8 +182,12 @@ func BenchmarkBuilderAttachment(b *testing.B) {
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
 	bldr.AddTextPart(textPart)
-	bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png")
-	bldr.AddAttachment("./testdata/knwoman.png")
+	if err := bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png"); err != nil {
+		b.Error(err)
+	}
+	if err := bldr.AddAttachment("./testdata/knwoman.png"); err != nil {
+		b.Error(err)
+	}
 	var err error
 	for n := 0; n < b.N; n++ {
 		//_ = bldr.Email("Id-123", func(Result) {})
@@ -183,7 +207,9 @@ func BenchmarkBuilderDKIM(b *testing.B) {
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
 	bldr.AddTextPart(textPart)
-	bldr.AddHTMLPart(htmlPart)
+	if err := bldr.AddHTMLPart(htmlPart); err != nil {
+		b.Error(err)
+	}
 	var err error
 	for n := 0; n < b.N; n++ {
 		//_ = bldr.Email("Id-123", func(Result) {})
@@ -203,8 +229,12 @@ func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
 	bldr.SetTo("Петя", "petya@mail.tld")
 	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
 	bldr.AddTextPart(textPart)
-	bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png")
-	bldr.AddAttachment("./testdata/knwoman.png")
+	if err := bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png"); err != nil {
+		b.Error(err)
+	}
+	if err := bldr.AddAttachment("./testdata/knwoman.png"); err != nil {
+		b.Error(err)
+	}
 	var err error
 	for n := 0; n < b.N; n++ {
 		_ = bldr.Email("Id-123", func(Result) {})

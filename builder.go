@@ -284,32 +284,32 @@ func (b *Builder) dkimEmailDoubleWriteCloser(w io.WriteCloser, options *dkim.Sig
 	return b.bodyBuilder(w)
 }
 
-func (b *Builder) dkimEmailBufferWriteCloser(w io.WriteCloser, options *dkim.SignOptions) error {
-	s, err := dkim.NewSigner(options)
-	if err != nil {
-		return err
-	}
-	defer s.Close()
-
-	var buf bytes.Buffer
-	mw := io.MultiWriter(&buf, s)
-
-	if err := b.headersBuilder(mw); err != nil {
-		return err
-	}
-	if err := b.bodyBuilder(mw); err != nil {
-		return err
-	}
-	if err := s.Close(); err != nil {
-		return err
-	}
-
-	if _, err := io.WriteString(w, s.Signature()); err != nil {
-		return err
-	}
-	_, err = io.Copy(w, &buf)
-	return err
-}
+//func (b *Builder) dkimEmailBufferWriteCloser(w io.WriteCloser, options *dkim.SignOptions) error {
+//	s, err := dkim.NewSigner(options)
+//	if err != nil {
+//		return err
+//	}
+//	defer s.Close()
+//
+//	var buf bytes.Buffer
+//	mw := io.MultiWriter(&buf, s)
+//
+//	if err := b.headersBuilder(mw); err != nil {
+//		return err
+//	}
+//	if err := b.bodyBuilder(mw); err != nil {
+//		return err
+//	}
+//	if err := s.Close(); err != nil {
+//		return err
+//	}
+//
+//	if _, err := io.WriteString(w, s.Signature()); err != nil {
+//		return err
+//	}
+//	_, err = io.Copy(w, &buf)
+//	return err
+//}
 
 func (b *Builder) headersBuilder(w io.Writer) error {
 	err := b.writeHeaders(w)
@@ -733,6 +733,9 @@ func fileWriter(w io.Writer, f *os.File, disposition string) error {
 	}
 	content := http.DetectContentType(buf)
 	_, err = f.Seek(0, 0)
+	if err != nil {
+		return err
+	}
 	var contentID string
 	if disposition == "inline" {
 		contentID = "Content-ID: <" + name + ">\r\n"

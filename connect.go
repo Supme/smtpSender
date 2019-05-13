@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/smtp"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -82,7 +83,7 @@ func (c *Connect) newClient(domain string, lookupMX bool) (client *smtp.Client, 
 	}
 
 	if len(mxs) == 0 {
-		return nil, fmt.Errorf("Max MX lookup tries reached")
+		return nil, fmt.Errorf("max MX lookup tries reached")
 	}
 
 	for i := range mxs {
@@ -122,6 +123,9 @@ func (c *Connect) newClient(domain string, lookupMX bool) (client *smtp.Client, 
 		} else {
 			var u *url.URL
 			u, err = url.Parse(c.iface)
+			if err != nil {
+				return nil, err
+			}
 			if strings.ToLower(u.Scheme) == "socks" || strings.ToLower(u.Scheme) == "socks5" {
 				ip, _, err = net.SplitHostPort(u.Host)
 				if err != nil {
@@ -175,8 +179,15 @@ func lookup(ip string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resolvedHosts.host[ip] = names[0]
-	return names[0], nil
+	if len(names) != 0 {
+		resolvedHosts.host[ip] = names[0]
+	} else {
+		resolvedHosts.host[ip], err = os.Hostname()
+		if err != nil {
+			return "", err
+		}
+	}
+	return resolvedHosts.host[ip], nil
 }
 
 func dialFunction(iface string) (dialFunc func(network, address string) (net.Conn, error), err error) {
@@ -190,7 +201,7 @@ func dialFunction(iface string) (dialFunc func(network, address string) (net.Con
 		u, err = url.Parse(iface)
 		if strings.ToLower(u.Scheme) == "socks" || strings.ToLower(u.Scheme) == "socks5" {
 			if err != nil {
-				return nil, fmt.Errorf("Error parse socks: %s", err.Error())
+				return nil, fmt.Errorf("error parse socks: %s", err.Error())
 			}
 			var iface proxy.Dialer
 			if u.User != nil {

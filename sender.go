@@ -25,10 +25,10 @@ type Pipe struct {
 var ErrPipeStopped = errors.New("email streaming pipe stopped")
 
 // NewPipe return new stream sender pipe
-func NewPipe(conf ...Config) Pipe {
+func NewPipe(conf ...Config) *Pipe {
 	pipe := Pipe{}
 	pipe.config = append(pipe.config, conf...)
-	return pipe
+	return &pipe
 }
 
 // Start stream sender

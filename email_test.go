@@ -48,18 +48,24 @@ func TestSplitEmail(t *testing.T) {
 
 func BenchmarkSplitEmailFullString(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		splitEmail(rightEmail[0].input)
+		if _, _, _, err := splitEmail(rightEmail[0].input); err != nil {
+			b.Error(err)
+		}
 	}
 }
 
 func BenchmarkSplitEmailOnlyString(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		splitEmail(rightEmail[0].input)
+		if _, _, _, err := splitEmail(rightEmail[0].input); err != nil {
+			b.Error(err)
+		}
 	}
 }
 
 func BenchmarkSplitEmail(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		splitEmail(rightEmail[0].input)
+		if _, _, _, err := splitEmail(rightEmail[0].input); err != nil {
+			b.Error(err)
+		}
 	}
 }

@@ -570,7 +570,7 @@ func (b *Builder) makeSubject() ([]byte, error) {
 func (b *Builder) writeTextPart(w io.Writer) error {
 	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-
+	defer b64Enc.Close()
 	if _, err := b64Enc.Write(b.textPart); err != nil {
 		return err
 	}
@@ -592,7 +592,7 @@ func (b *Builder) writeTextPart(w io.Writer) error {
 func (b *Builder) writeAMPPart(w io.Writer) error {
 	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-
+	defer b64Enc.Close()
 	if _, err := b64Enc.Write(b.ampPart); err != nil {
 		return err
 	}
@@ -613,7 +613,7 @@ func (b *Builder) writeAMPPart(w io.Writer) error {
 func (b *Builder) writeHTMLPart(w io.Writer) error {
 	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-
+	defer b64Enc.Close()
 	if _, err := b64Enc.Write(b.htmlPart); err != nil {
 		return err
 	}
@@ -754,6 +754,7 @@ func fileWriter(w io.Writer, f *os.File, disposition string) error {
 
 	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
+	defer b64Enc.Close()
 	_, err = io.Copy(b64Enc, f)
 	return err
 }

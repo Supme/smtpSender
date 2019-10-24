@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+const Version = "0.0.7"
+
 // Config profile for sender pool
 type Config struct {
 	Hostname   string

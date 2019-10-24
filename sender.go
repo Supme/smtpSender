@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-const Version = "0.0.7"
+const Version = "0.0.8"
 
 // Config profile for sender pool
 type Config struct {

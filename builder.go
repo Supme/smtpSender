@@ -12,6 +12,7 @@ import (
 	"golang.org/x/crypto/ed25519"
 	"io"
 	"mime"
+	"mime/quotedprintable"
 	"net/http"
 	"net/textproto"
 	"os"
@@ -474,12 +475,12 @@ func (b *Builder) writeAlternativeHeader(w io.Writer) error {
 }
 
 func (b *Builder) writeTextPartHeader(w io.Writer) error {
-	_, err := w.Write([]byte("Content-Type: text/plain; charset=\"utf-8\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"))
+	_, err := w.Write([]byte("Content-Type: text/plain; charset=\"utf-8\"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n"))
 	return err
 }
 
 func (b *Builder) writeAMPPartHeader(w io.Writer) error {
-	_, err := w.Write([]byte("Content-Type: text/x-amp-html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"))
+	_, err := w.Write([]byte("Content-Type: text/x-amp-html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n"))
 	return err
 }
 
@@ -492,7 +493,7 @@ func (b *Builder) writeHTMLPartHeader(w io.Writer) error {
 			return err
 		}
 	}
-	_, err := w.Write([]byte("Content-Type: text/html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"))
+	_, err := w.Write([]byte("Content-Type: text/html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n"))
 	return err
 }
 
@@ -568,20 +569,19 @@ func (b *Builder) makeSubject() ([]byte, error) {
 
 // Text part
 func (b *Builder) writeTextPart(w io.Writer) error {
-	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
-	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
+	q := quotedprintable.NewWriter(w)
 
-	if _, err := b64Enc.Write(b.textPart); err != nil {
+	if _, err := q.Write(b.textPart); err != nil {
 		return err
 	}
 
 	if b.textFunc != nil {
-		if err := b.textFunc(b64Enc); err != nil {
+		if err := b.textFunc(q); err != nil {
 			return err
 		}
 	}
 
-	if err := b64Enc.Close(); err != nil {
+	if err := q.Close(); err != nil {
 		return err
 	}
 
@@ -594,19 +594,18 @@ func (b *Builder) writeTextPart(w io.Writer) error {
 
 // AMP part
 func (b *Builder) writeAMPPart(w io.Writer) error {
-	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
-	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-	if _, err := b64Enc.Write(b.ampPart); err != nil {
+	q := quotedprintable.NewWriter(w)
+	if _, err := q.Write(b.ampPart); err != nil {
 		return err
 	}
 
 	if b.ampFunc != nil {
-		if err := b.ampFunc(b64Enc); err != nil {
+		if err := b.ampFunc(q); err != nil {
 			return err
 		}
 	}
 
-	if err := b64Enc.Close(); err != nil {
+	if err := q.Close(); err != nil {
 		return err
 	}
 
@@ -619,19 +618,18 @@ func (b *Builder) writeAMPPart(w io.Writer) error {
 
 // HTML part
 func (b *Builder) writeHTMLPart(w io.Writer) error {
-	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
-	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
-	if _, err := b64Enc.Write(b.htmlPart); err != nil {
+	q := quotedprintable.NewWriter(w)
+	if _, err := q.Write(b.htmlPart); err != nil {
 		return err
 	}
 
 	if b.htmlFunc != nil {
-		if err := b.htmlFunc(b64Enc); err != nil {
+		if err := b.htmlFunc(q); err != nil {
 			return err
 		}
 	}
 
-	if err := b64Enc.Close(); err != nil {
+	if err := q.Close(); err != nil {
 		return err
 	}
 

@@ -18,8 +18,6 @@ import (
 	"sync"
 )
 
-const AppVersion = "0.0.1"
-
 var (
 	fromEmail        string
 	fromName         string
@@ -74,7 +72,7 @@ func main() {
 	version := flag.Bool("v", false, "Prints version")
 	flag.Parse()
 	if *version {
-		fmt.Printf("Sendemail version: v%s\r\n\r\n", AppVersion)
+		fmt.Printf("Sendemail version: v%s\r\n\r\n", smtpSender.Version)
 		os.Exit(0)
 	}
 

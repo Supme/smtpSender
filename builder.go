@@ -767,5 +767,8 @@ func fileWriter(w io.Writer, f *os.File, disposition string) error {
 	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 76) // 76 from RFC
 	b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
 	_, err = io.Copy(b64Enc, f)
-	return err
+	if err != nil {
+		return err
+	}
+	return b64Enc.Close()
 }

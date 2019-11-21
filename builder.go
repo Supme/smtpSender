@@ -207,7 +207,7 @@ func (b *Builder) Email(id string, resultFunc func(Result)) *Email {
 	return email
 }
 
-func (b *Builder) emailWriteCloser(w io.WriteCloser) error {
+func (b Builder) emailWriteCloser(w io.WriteCloser) error {
 	var err error
 	defer w.Close()
 
@@ -260,7 +260,7 @@ func (b *Builder) emailWriteCloser(w io.WriteCloser) error {
 	return b.dkimEmailDoubleWriteCloser(w, &options)
 }
 
-func (b *Builder) dkimEmailDoubleWriteCloser(w io.WriteCloser, options *dkim.SignOptions) error {
+func (b Builder) dkimEmailDoubleWriteCloser(w io.WriteCloser, options *dkim.SignOptions) error {
 	signer, err := dkim.NewSigner(options)
 	if err != nil {
 		return err
@@ -312,7 +312,7 @@ func (b *Builder) dkimEmailDoubleWriteCloser(w io.WriteCloser, options *dkim.Sig
 //	return err
 //}
 
-func (b *Builder) headersBuilder(w io.Writer) error {
+func (b Builder) headersBuilder(w io.Writer) error {
 	err := b.writeHeaders(w)
 	if err != nil {
 		return err
@@ -339,7 +339,7 @@ func (b *Builder) headersBuilder(w io.Writer) error {
 	return err
 }
 
-func (b *Builder) bodyBuilder(w io.Writer) error {
+func (b Builder) bodyBuilder(w io.Writer) error {
 	switch {
 	case b.isMultipart() || b.hasAttachment():
 		return b.multipartBuilder(w)
@@ -355,7 +355,7 @@ func (b *Builder) bodyBuilder(w io.Writer) error {
 	return nil
 }
 
-func (b *Builder) multipartBuilder(w io.Writer) error {
+func (b Builder) multipartBuilder(w io.Writer) error {
 	switch {
 	case b.hasAlternative():
 		if _, err := w.Write([]byte(boundaryMixedBegin)); err != nil {
@@ -420,7 +420,7 @@ func (b *Builder) multipartBuilder(w io.Writer) error {
 	return nil
 }
 
-func (b *Builder) alternativeBuilder(w io.Writer) error {
+func (b Builder) alternativeBuilder(w io.Writer) error {
 	if b.hasText() {
 		if _, err := w.Write([]byte(boundaryAlternativeBegin)); err != nil {
 			return err
@@ -464,27 +464,27 @@ func (b *Builder) alternativeBuilder(w io.Writer) error {
 	return nil
 }
 
-func (b *Builder) writeMultipartHeader(w io.Writer) error {
+func (b Builder) writeMultipartHeader(w io.Writer) error {
 	_, err := w.Write([]byte("Content-Type: multipart/mixed; boundary=\"" + boundaryMixed + "\"\r\n\r\n"))
 	return err
 }
 
-func (b *Builder) writeAlternativeHeader(w io.Writer) error {
+func (b Builder) writeAlternativeHeader(w io.Writer) error {
 	_, err := w.Write([]byte("Content-Type: multipart/alternative; boundary=\"" + boundaryAlternative + "\"\r\n\r\n"))
 	return err
 }
 
-func (b *Builder) writeTextPartHeader(w io.Writer) error {
+func (b Builder) writeTextPartHeader(w io.Writer) error {
 	_, err := w.Write([]byte("Content-Type: text/plain; charset=\"utf-8\"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n"))
 	return err
 }
 
-func (b *Builder) writeAMPPartHeader(w io.Writer) error {
+func (b Builder) writeAMPPartHeader(w io.Writer) error {
 	_, err := w.Write([]byte("Content-Type: text/x-amp-html; charset=\"utf-8\"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n"))
 	return err
 }
 
-func (b *Builder) writeHTMLPartHeader(w io.Writer) error {
+func (b Builder) writeHTMLPartHeader(w io.Writer) error {
 	if b.hasHTMLRelated() {
 		if _, err := w.Write([]byte("Content-Type: multipart/related; boundary=\"" + boundaryHTMLRelated + "\"\r\n\r\n")); err != nil {
 			return err
@@ -497,7 +497,7 @@ func (b *Builder) writeHTMLPartHeader(w io.Writer) error {
 	return err
 }
 
-func (b *Builder) writeHeaders(w io.Writer) error {
+func (b Builder) writeHeaders(w io.Writer) error {
 	if _, err := w.Write([]byte("From: " + b.From + "\r\n")); err != nil {
 		return err
 	}
@@ -555,7 +555,7 @@ func (b *Builder) writeHeaders(w io.Writer) error {
 	return err
 }
 
-func (b *Builder) makeSubject() ([]byte, error) {
+func (b Builder) makeSubject() ([]byte, error) {
 	var err error
 	subj := bytes.NewBufferString(b.Subject)
 	if b.subjectFunc != nil {
@@ -568,7 +568,7 @@ func (b *Builder) makeSubject() ([]byte, error) {
 }
 
 // Text part
-func (b *Builder) writeTextPart(w io.Writer) error {
+func (b Builder) writeTextPart(w io.Writer) error {
 	q := quotedprintable.NewWriter(w)
 
 	if _, err := q.Write(b.textPart); err != nil {
@@ -593,7 +593,7 @@ func (b *Builder) writeTextPart(w io.Writer) error {
 }
 
 // AMP part
-func (b *Builder) writeAMPPart(w io.Writer) error {
+func (b Builder) writeAMPPart(w io.Writer) error {
 	q := quotedprintable.NewWriter(w)
 	if _, err := q.Write(b.ampPart); err != nil {
 		return err
@@ -617,7 +617,7 @@ func (b *Builder) writeAMPPart(w io.Writer) error {
 }
 
 // HTML part
-func (b *Builder) writeHTMLPart(w io.Writer) error {
+func (b Builder) writeHTMLPart(w io.Writer) error {
 	q := quotedprintable.NewWriter(w)
 	if _, err := q.Write(b.htmlPart); err != nil {
 		return err
@@ -668,7 +668,7 @@ func (b *Builder) writeHTMLPart(w io.Writer) error {
 	return nil
 }
 
-func (b *Builder) writeAttachment(w io.Writer) error {
+func (b Builder) writeAttachment(w io.Writer) error {
 	for i := range b.attachments {
 		if _, err := w.Write([]byte(boundaryMixedBegin)); err != nil {
 			return err
@@ -683,19 +683,19 @@ func (b *Builder) writeAttachment(w io.Writer) error {
 	return nil
 }
 
-func (b *Builder) hasText() bool {
+func (b Builder) hasText() bool {
 	return len(b.textPart) != 0 || b.textFunc != nil
 }
 
-func (b *Builder) hasHTML() bool {
+func (b Builder) hasHTML() bool {
 	return len(b.htmlPart) != 0 || b.htmlFunc != nil
 }
 
-func (b *Builder) hasAMP() bool {
+func (b Builder) hasAMP() bool {
 	return len(b.ampPart) != 0 || b.ampFunc != nil
 }
 
-func (b *Builder) hasAlternative() bool {
+func (b Builder) hasAlternative() bool {
 	var c = 0
 	if b.hasText() {
 		c++
@@ -709,15 +709,15 @@ func (b *Builder) hasAlternative() bool {
 	return c > 1
 }
 
-func (b *Builder) hasHTMLRelated() bool {
+func (b Builder) hasHTMLRelated() bool {
 	return b.hasHTML() && (len(b.htmlRelatedFiles) > 0)
 }
 
-func (b *Builder) hasAttachment() bool {
+func (b Builder) hasAttachment() bool {
 	return len(b.attachments) > 0
 }
 
-func (b *Builder) isMultipart() bool {
+func (b Builder) isMultipart() bool {
 	var c = 0
 	if b.hasText() || b.hasAMP() || b.hasHTML() {
 		c++

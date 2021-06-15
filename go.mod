@@ -1,9 +1,9 @@
 module github.com/Supme/smtpSender
 
 require (
-	github.com/emersion/go-msgauth v0.5.0
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/net v0.0.0-20200904194848-62affa334b73
+	github.com/emersion/go-msgauth v0.6.5
+	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 )
 
-go 1.13
+go 1.16

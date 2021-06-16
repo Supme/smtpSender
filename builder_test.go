@@ -199,9 +199,9 @@ func BenchmarkBuilderAttachment(b *testing.B) {
 	}
 }
 
-func BenchmarkBuilderDKIM(b *testing.B) {
+func BenchmarkBuilderDKIMSignMethodDoubleWrite(b *testing.B) {
 	bldr := new(Builder)
-	bldr.SetDKIM("mail.ru", "test", pkey)
+	bldr.SetDKIMSignMethod(DKIMSignMethodDoubleWrite).SetDKIM("mail.ru", "test", pkey)
 	bldr.SetSubject("Test subject")
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
@@ -221,9 +221,56 @@ func BenchmarkBuilderDKIM(b *testing.B) {
 	}
 }
 
-func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
+func BenchmarkBuilderDKIMSignMethodBufferWrite(b *testing.B) {
 	bldr := new(Builder)
-	bldr.SetDKIM("mail.ru", "test", pkey)
+	bldr.SetDKIMSignMethod(DKIMSignMethodBufferWrite).SetDKIM("mail.ru", "test", pkey)
+	bldr.SetSubject("Test subject")
+	bldr.SetFrom("Вася", "vasya@mail.tld")
+	bldr.SetTo("Петя", "petya@mail.tld")
+	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
+	bldr.AddTextPart(textPart)
+	if err := bldr.AddHTMLPart(htmlPart); err != nil {
+		b.Error(err)
+	}
+	var err error
+	for n := 0; n < b.N; n++ {
+		//_ = bldr.Email("Id-123", func(Result) {})
+		email := bldr.Email("Id-123", func(Result) {})
+		err = email.WriteCloser(discard)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func BenchmarkBuilderAttachmentDKIMSignMethodDoubleWrite(b *testing.B) {
+	bldr := new(Builder)
+	bldr.SetDKIMSignMethod(DKIMSignMethodDoubleWrite).SetDKIM("mail.ru", "test", pkey)
+	bldr.SetSubject("Test subject")
+	bldr.SetFrom("Вася", "vasya@mail.tld")
+	bldr.SetTo("Петя", "petya@mail.tld")
+	bldr.AddHeader("Content-Language: ru", "Message-ID: <test_message>", "Precedence: bulk")
+	bldr.AddTextPart(textPart)
+	if err := bldr.AddHTMLPart(htmlPart, "./testdata/prwoman.png"); err != nil {
+		b.Error(err)
+	}
+	if err := bldr.AddAttachment("./testdata/knwoman.png"); err != nil {
+		b.Error(err)
+	}
+	var err error
+	for n := 0; n < b.N; n++ {
+		_ = bldr.Email("Id-123", func(Result) {})
+		email := bldr.Email("Id-123", func(Result) {})
+		err = email.WriteCloser(discard)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func BenchmarkBuilderAttachmentDKIMSignMethodBufferWrite(b *testing.B) {
+	bldr := new(Builder)
+	bldr.SetDKIMSignMethod(DKIMSignMethodBufferWrite).SetDKIM("mail.ru", "test", pkey)
 	bldr.SetSubject("Test subject")
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")

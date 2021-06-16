@@ -57,11 +57,22 @@ type builderDKIM struct {
 	domain     string
 	selector   string
 	privateKey []byte
+	dkimSignMethod int
 }
 
 // NewBuilder return new Builder
 func NewBuilder() *Builder {
 	return &Builder{}
+}
+
+const (
+	DKIMSignMethodDoubleWrite = iota
+	DKIMSignMethodBufferWrite
+)
+
+func (b *Builder) SetDKIMSignMethod(signMethod int) *Builder {
+	b.dkim.dkimSignMethod = signMethod
+	return b
 }
 
 // SetDKIM sign DKIM parameters
@@ -257,7 +268,13 @@ func (b Builder) emailWriteCloser(w io.WriteCloser) error {
 	// dkimEmailBufferWriteCloser
 	// BenchmarkBuilderDKIM-2             	     500	   2303593 ns/op	   52805 B/op	    1107 allocs/op
 	// BenchmarkBuilderAttachmentDKIM-2   	       1	1396323806 ns/op	11647864 B/op	 1214690 allocs/op
-	return b.dkimEmailDoubleWriteCloser(w, &options)
+	switch b.dkim.dkimSignMethod {
+	case DKIMSignMethodDoubleWrite:
+		return b.dkimEmailDoubleWriteCloser(w, &options)
+	case DKIMSignMethodBufferWrite:
+		return b.dkimEmailBufferWriteCloser(w, &options)
+	}
+	return errors.New("unknown sign method")
 }
 
 func (b Builder) dkimEmailDoubleWriteCloser(w io.WriteCloser, options *dkim.SignOptions) error {
@@ -285,32 +302,32 @@ func (b Builder) dkimEmailDoubleWriteCloser(w io.WriteCloser, options *dkim.Sign
 	return b.bodyBuilder(w)
 }
 
-//func (b *Builder) dkimEmailBufferWriteCloser(w io.WriteCloser, options *dkim.SignOptions) error {
-//	s, err := dkim.NewSigner(options)
-//	if err != nil {
-//		return err
-//	}
-//	defer s.Close()
-//
-//	var buf bytes.Buffer
-//	mw := io.MultiWriter(&buf, s)
-//
-//	if err := b.headersBuilder(mw); err != nil {
-//		return err
-//	}
-//	if err := b.bodyBuilder(mw); err != nil {
-//		return err
-//	}
-//	if err := s.Close(); err != nil {
-//		return err
-//	}
-//
-//	if _, err := io.WriteString(w, s.Signature()); err != nil {
-//		return err
-//	}
-//	_, err = io.Copy(w, &buf)
-//	return err
-//}
+func (b *Builder) dkimEmailBufferWriteCloser(w io.WriteCloser, options *dkim.SignOptions) error {
+	s, err := dkim.NewSigner(options)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	var buf bytes.Buffer
+	mw := io.MultiWriter(&buf, s)
+
+	if err := b.headersBuilder(mw); err != nil {
+		return err
+	}
+	if err := b.bodyBuilder(mw); err != nil {
+		return err
+	}
+	if err := s.Close(); err != nil {
+		return err
+	}
+
+	if _, err := io.WriteString(w, s.Signature()); err != nil {
+		return err
+	}
+	_, err = io.Copy(w, &buf)
+	return err
+}
 
 func (b Builder) headersBuilder(w io.Writer) error {
 	err := b.writeHeaders(w)

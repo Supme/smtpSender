@@ -45,7 +45,6 @@ func TestDelimitWriter_Write(t *testing.T) {
 		if file.IsDir() {
 			continue
 		}
-		fmt.Println(file.Name())
 		f, err := os.Open(filepath.Join(testfolder,file.Name()))
 		if err != nil {
 			t.Fatal(err)

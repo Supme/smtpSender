@@ -15,6 +15,8 @@ func init() {
 	rightEmail = append(rightEmail, emailField{" My name   <  my+email@domain.tld.  > ", "My name", "my+email", "domain.tld"})
 	rightEmail = append(rightEmail, emailField{"  < My+Email@doMain.tld.  >  ", "", "my+email", "domain.tld"})
 	rightEmail = append(rightEmail, emailField{"  mY+eMail@Domain.Tld.   ", "", "my+email", "domain.tld"})
+	rightEmail = append(rightEmail, emailField{"recipient@linklocal.supme.ru", "", "recipient", "linklocal.supme.ru"})
+	rightEmail = append(rightEmail, emailField{"=?utf-8?q?=D0=9E=D1=82=D0=BF=D1=80=D0=B0=D0=B2=D0=B8=D1=82=D0=B5=D0=BB?= =?utf-8?q?=D1=8C?= <sender@localhost.localdomain>", "=?utf-8?q?=D0=9E=D1=82=D0=BF=D1=80=D0=B0=D0=B2=D0=B8=D1=82=D0=B5=D0=BB?= =?utf-8?q?=D1=8C?=", "sender", "localhost.localdomain"})
 
 	badEmail = append(badEmail, emailField{input: "my+email@domain.t"})
 	badEmail = append(badEmail, emailField{input: "< my+email[at]domain.tld>"})

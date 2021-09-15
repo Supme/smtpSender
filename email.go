@@ -59,7 +59,9 @@ func (e *Email) Send(connect *Connect, server *SMTPserver) {
 	start := time.Now()
 	err = e.parseEmail()
 	if err != nil {
-		e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("513 %v", err), Duration: time.Since(start)})
+		if e.ResultFunc != nil {
+			e.ResultFunc(Result{ID: e.ID, Err: fmt.Errorf("513 %v", err), Duration: time.Since(start)})
+		}
 		return
 	}
 	if server == nil {
@@ -142,12 +144,24 @@ func (e *Email) parseEmail() (err error) {
 }
 
 var (
-	splitEmailFullStringRe = regexp.MustCompile(`(.+)<(.+)@(.+\..{2,9})>`)
-	splitEmailOnlyStringRe = regexp.MustCompile(`<(.+)@(.+\..{2,9})>`)
-	splitEmailRe           = regexp.MustCompile(`(.+)@(.+\..{2,9})`)
+	splitEmailFullStringRe = regexp.MustCompile(`(.+)<(.+)@(.+\..{2,12})>`)
+	splitEmailOnlyStringRe = regexp.MustCompile(`<(.+)@(.+\..{2,12})>`)
+	splitEmailRe           = regexp.MustCompile(`(.+)@(.+\..{2,12})`)
 )
 
 func splitEmail(e string) (name, email, domain string, err error) {
+	//addr, err := mail.ParseAddress(e)
+	//if err != nil {
+	//	return "", "", "", err
+	//}
+	//name = addr.Name
+	//split := strings.Split(addr.Address, "@")
+	//if len(split) != 2 {
+	//	return name, "", "", fmt.Errorf("bad email format")
+	//}
+	//email = strings.TrimSpace(split[0])
+	//domain = strings.TrimRight(strings.ToLower(strings.TrimSpace(split[1])), ".")
+
 	s := strings.TrimSpace(e)
 	if m := splitEmailFullStringRe.FindStringSubmatch(s); len(m) == 4 {
 		name = strings.TrimSpace(m[1])

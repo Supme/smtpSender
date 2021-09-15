@@ -14,6 +14,7 @@ import (
 	"mime"
 	"mime/quotedprintable"
 	"net/http"
+	"net/mail"
 	"net/textproto"
 	"os"
 	"path/filepath"
@@ -85,13 +86,15 @@ func (b *Builder) SetDKIM(domain, selector string, privateKey []byte) *Builder {
 
 // SetFrom email sender
 func (b *Builder) SetFrom(name, email string) *Builder {
-	b.From = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
+	from := mail.Address{Name: name, Address: email}
+	b.From = from.String()
 	return b
 }
 
 // SetTo email recipient
 func (b *Builder) SetTo(name, email string) *Builder {
-	b.To = mime.BEncoding.Encode("utf-8", name) + "<" + email + ">"
+	to := mail.Address{Name: name, Address: email}
+	b.To = to.String()
 	return b
 }
 
@@ -349,9 +352,6 @@ func (b Builder) headersBuilder(w io.Writer) error {
 	case b.hasAttachment():
 		err = b.writeMultipartHeader(w)
 	}
-	if err != nil {
-		return err
-	}
 
 	return err
 }
@@ -368,6 +368,8 @@ func (b Builder) bodyBuilder(w io.Writer) error {
 		return b.writeAMPPart(w)
 	case b.hasHTML():
 		return b.writeHTMLPart(w)
+	case b.hasAMP():
+		return b.writeAMPPart(w)
 	}
 	return nil
 }
@@ -391,9 +393,7 @@ func (b Builder) multipartBuilder(w io.Writer) error {
 		if err := b.writeTextPartHeader(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
-			return err
-		}
+
 		if err := b.writeTextPart(w); err != nil {
 			return err
 		}
@@ -404,9 +404,7 @@ func (b Builder) multipartBuilder(w io.Writer) error {
 		if err := b.writeAMPPartHeader(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
-			return err
-		}
+
 		if err := b.writeAMPPart(w); err != nil {
 			return err
 		}
@@ -417,9 +415,7 @@ func (b Builder) multipartBuilder(w io.Writer) error {
 		if err := b.writeHTMLPartHeader(w); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
-			return err
-		}
+
 		if err := b.writeHTMLPart(w); err != nil {
 			return err
 		}
@@ -581,7 +577,7 @@ func (b Builder) makeSubject() ([]byte, error) {
 			return nil, err
 		}
 	}
-	return []byte(mime.BEncoding.Encode("utf-8", subj.String())), nil
+	return []byte(mime.QEncoding.Encode("utf-8", subj.String())), nil
 }
 
 // Text part
@@ -602,8 +598,10 @@ func (b Builder) writeTextPart(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
-		return err
+	if b.hasAlternative() || b.isMultipart() {
+		if _, err := w.Write([]byte("\r\n")); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -626,8 +624,10 @@ func (b Builder) writeAMPPart(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
-		return err
+	if b.hasAlternative() || b.isMultipart() {
+		if _, err := w.Write([]byte("\r\n")); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -650,11 +650,7 @@ func (b Builder) writeHTMLPart(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write([]byte("\r\n")); err != nil {
-		return err
-	}
-
-	if len(b.htmlRelatedFiles) == 0 {
+	if (b.hasAlternative() || b.isMultipart()) && len(b.htmlRelatedFiles) == 0 {
 		if _, err := w.Write([]byte("\r\n")); err != nil {
 			return err
 		}
@@ -672,7 +668,7 @@ func (b Builder) writeHTMLPart(w io.Writer) error {
 		if err := fileWriter(w, b.htmlRelatedFiles[i], "inline"); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
+		if _, err := w.Write([]byte("\r\n")); err != nil {
 			return err
 		}
 	}
@@ -693,7 +689,7 @@ func (b Builder) writeAttachment(w io.Writer) error {
 		if err := fileWriter(w, b.attachments[i], "attachment"); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte("\r\n\r\n")); err != nil {
+		if _, err := w.Write([]byte("\r\n")); err != nil {
 			return err
 		}
 	}

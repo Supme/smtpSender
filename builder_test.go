@@ -1,4 +1,4 @@
-package smtpSender
+package smtpSender_test
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"net/textproto"
 	"testing"
 	tmplText "text/template"
+
+	"github.com/Supme/smtpSender"
 )
 
 var (
@@ -39,7 +41,7 @@ func (devNull) Write(p []byte) (int, error) { return len(p), nil }
 func (devNull) Close() error                { return nil }
 
 func TestBuilder(t *testing.T) {
-	bldr := new(Builder)
+	bldr := new(smtpSender.Builder)
 	bldr.SetSubject("Test subject")
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
@@ -60,7 +62,7 @@ func TestBuilder(t *testing.T) {
 	}
 
 	//_ = bldr.Email("Id-123", func(Result) {})
-	email := bldr.Email("Id-123", func(Result) {})
+	email := bldr.Email("Id-123", func(smtpSender.Result) {})
 	err := email.WriteCloser(discard)
 	if err != nil {
 		t.Error(err)
@@ -68,7 +70,7 @@ func TestBuilder(t *testing.T) {
 }
 
 func TestBuilderTemplate(t *testing.T) {
-	bldr := new(Builder)
+	bldr := new(smtpSender.Builder)
 	data := map[string]string{"Name": "Вася"}
 
 	subj := tmplText.New("Text")
@@ -102,7 +104,7 @@ func TestBuilderTemplate(t *testing.T) {
 		t.Error(err)
 	}
 
-	email := bldr.Email("Id-123", func(Result) {})
+	email := bldr.Email("Id-123", func(smtpSender.Result) {})
 	err := email.WriteCloser(discard)
 	if err != nil {
 		t.Error(err)
@@ -110,7 +112,7 @@ func TestBuilderTemplate(t *testing.T) {
 }
 
 func BenchmarkBuilder(b *testing.B) {
-	bldr := new(Builder)
+	bldr := new(smtpSender.Builder)
 	bldr.SetSubject("Test subject")
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
@@ -121,7 +123,7 @@ func BenchmarkBuilder(b *testing.B) {
 	}
 	var err error
 	for n := 0; n < b.N; n++ {
-		email := bldr.Email("Id-123", func(Result) {})
+		email := bldr.Email("Id-123", func(smtpSender.Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
 			b.Error(err)
@@ -130,7 +132,7 @@ func BenchmarkBuilder(b *testing.B) {
 }
 
 func BenchmarkBuilderTemplate(b *testing.B) {
-	bldr := new(Builder)
+	bldr := new(smtpSender.Builder)
 	data := map[string]string{"Name": "Вася"}
 
 	subj := tmplText.New("Text")
@@ -167,7 +169,7 @@ func BenchmarkBuilderTemplate(b *testing.B) {
 	var err error
 	for n := 0; n < b.N; n++ {
 		//_ = bldr.Email("Id-123", func(Result) {})
-		email := bldr.Email("Id-123", func(Result) {})
+		email := bldr.Email("Id-123", func(smtpSender.Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
 			b.Error(err)
@@ -176,7 +178,7 @@ func BenchmarkBuilderTemplate(b *testing.B) {
 }
 
 func BenchmarkBuilderAttachment(b *testing.B) {
-	bldr := new(Builder)
+	bldr := new(smtpSender.Builder)
 	bldr.SetSubject("Test subject")
 	bldr.SetFrom("Вася", "vasya@mail.tld")
 	bldr.SetTo("Петя", "petya@mail.tld")
@@ -191,7 +193,7 @@ func BenchmarkBuilderAttachment(b *testing.B) {
 	var err error
 	for n := 0; n < b.N; n++ {
 		//_ = bldr.Email("Id-123", func(Result) {})
-		email := bldr.Email("Id-123", func(Result) {})
+		email := bldr.Email("Id-123", func(smtpSender.Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
 			b.Error(err)
@@ -200,7 +202,7 @@ func BenchmarkBuilderAttachment(b *testing.B) {
 }
 
 func BenchmarkBuilderDKIM(b *testing.B) {
-	bldr := new(Builder)
+	bldr := new(smtpSender.Builder)
 	bldr.SetDKIM("mail.ru", "test", pkey)
 	bldr.SetSubject("Test subject")
 	bldr.SetFrom("Вася", "vasya@mail.tld")
@@ -213,7 +215,7 @@ func BenchmarkBuilderDKIM(b *testing.B) {
 	var err error
 	for n := 0; n < b.N; n++ {
 		//_ = bldr.Email("Id-123", func(Result) {})
-		email := bldr.Email("Id-123", func(Result) {})
+		email := bldr.Email("Id-123", func(smtpSender.Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
 			b.Error(err)
@@ -222,7 +224,7 @@ func BenchmarkBuilderDKIM(b *testing.B) {
 }
 
 func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
-	bldr := new(Builder)
+	bldr := new(smtpSender.Builder)
 	bldr.SetDKIM("mail.ru", "test", pkey)
 	bldr.SetSubject("Test subject")
 	bldr.SetFrom("Вася", "vasya@mail.tld")
@@ -237,8 +239,8 @@ func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
 	}
 	var err error
 	for n := 0; n < b.N; n++ {
-		_ = bldr.Email("Id-123", func(Result) {})
-		email := bldr.Email("Id-123", func(Result) {})
+		//_ = bldr.Email("Id-123", func(smtpSender.Result) {})
+		email := bldr.Email("Id-123", func(smtpSender.Result) {})
 		err = email.WriteCloser(discard)
 		if err != nil {
 			b.Error(err)
@@ -249,7 +251,7 @@ func BenchmarkBuilderAttachmentDKIM(b *testing.B) {
 func TestDelimitWriter(t *testing.T) {
 	m := []byte(htmlPart)
 	w := &bytes.Buffer{}
-	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 16)
+	dwr := smtpSender.NewDelimitWriter(w, []byte{0x0d, 0x0a}, 16)
 	encoder := base64.NewEncoder(base64.StdEncoding, dwr)
 	_, err := encoder.Write(m)
 	if err != nil {
@@ -269,7 +271,7 @@ func TestDelimitWriter(t *testing.T) {
 func BenchmarkBase64DelimitWriter(b *testing.B) {
 	m := []byte("<h1>Hello, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
 	w := ioutil.Discard
-	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 8)
+	dwr := smtpSender.NewDelimitWriter(w, []byte{0x0d, 0x0a}, 8)
 	encoder := base64.NewEncoder(base64.StdEncoding, dwr)
 	for n := 0; n < b.N; n++ {
 		_, err := encoder.Write(m)
@@ -286,7 +288,7 @@ func BenchmarkBase64DelimitWriter(b *testing.B) {
 func BenchmarkDelimitWriter(b *testing.B) {
 	m := []byte("<h1>Hello, буфет</h1><br/>\r\n<h2>Здорова, колбаса!</h2><br/>\r\n<h3>Как твои дела?</h3><br/>\r\n0123456789\r\nabcdefgh\r\n")
 	w := ioutil.Discard
-	dwr := NewDelimitWriter(w, []byte{0x0d, 0x0a}, 8)
+	dwr := smtpSender.NewDelimitWriter(w, []byte{0x0d, 0x0a}, 8)
 	for n := 0; n < b.N; n++ {
 		_, err := dwr.Write(m)
 		if err != nil {

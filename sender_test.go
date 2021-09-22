@@ -1,4 +1,4 @@
-package smtpSender
+package smtpSender_test
 
 import (
 	"bytes"
@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/Supme/smtpSender"
 
 	"github.com/chrj/smtpd"
 )
@@ -232,7 +234,7 @@ type testEmail struct {
 
 func (te testEmail) start(t *testing.T, addr string, received chan receiveMail, id string) {
 	// build email
-	b := NewBuilder().
+	b := smtpSender.NewBuilder().
 		SetFrom(te.senderName, te.senderEmail).
 		SetTo(te.recipientName, te.recipientEmail).
 		SetSubject(te.subject)
@@ -248,14 +250,14 @@ func (te testEmail) start(t *testing.T, addr string, received chan receiveMail, 
 
 	// send email
 	e := b.Email(id,
-		func(result Result) {
+		func(result smtpSender.Result) {
 			//t.Logf("%+v", result)
 			if result.Err != nil {
 				t.Error(result.Err)
 			}
 		})
 
-	conn := new(Connect)
+	conn := new(smtpSender.Connect)
 	conn.SetHostName(te.heloName)
 	_, port, err := net.SplitHostPort(addr)
 	if err != nil {

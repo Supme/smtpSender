@@ -1,4 +1,4 @@
-package smtpSender
+package smtpSender_test
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Supme/smtpSender"
 )
 
 const testfolder = "testdata"
@@ -51,7 +53,7 @@ func TestDelimitWriter_Write(t *testing.T) {
 		}
 
 		b64buf := &bytes.Buffer{}
-		dwr := NewDelimitWriter(b64buf, []byte{0x0d, 0x0a}, 76)
+		dwr := smtpSender.NewDelimitWriter(b64buf, []byte{0x0d, 0x0a}, 76)
 		b64Enc := base64.NewEncoder(base64.StdEncoding, dwr)
 		_, err = io.Copy(b64Enc, f)
 		if err != nil {

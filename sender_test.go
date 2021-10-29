@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"github.com/jhillyerd/enmime"
 	"io/ioutil"
 	"net"
 	"path/filepath"
@@ -12,9 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Supme/smtpSender"
+	"github.com/REQUEA/smtpd"
+	"github.com/jhillyerd/enmime"
 
-	"github.com/chrj/smtpd"
+	"github.com/Supme/smtpSender"
 )
 
 const (
@@ -63,7 +63,7 @@ func TestEmail_Send(t *testing.T) {
 			subject:        "🚀 Test message 🚀",
 			text:           testText,
 			html:           testHtml,
-			htmlRelated: []string{"testdata/knwoman.png", "testdata/prwoman.png"},
+			htmlRelated:    []string{"testdata/knwoman.png", "testdata/prwoman.png"},
 			amp:            testAmp,
 			attachments:    []string{"testdata/knwoman.png", "testdata/prwoman.png"},
 		},
@@ -76,7 +76,7 @@ func TestEmail_Send(t *testing.T) {
 			subject:        "Test message",
 			text:           testText,
 			html:           testHtml,
-			htmlRelated: []string{"testdata/knwoman.png", "testdata/prwoman.png"},
+			htmlRelated:    []string{"testdata/knwoman.png", "testdata/prwoman.png"},
 			amp:            testAmp,
 			attachments:    []string{"testdata/knwoman.png", "testdata/prwoman.png"},
 		},
@@ -134,7 +134,7 @@ func TestEmail_Send(t *testing.T) {
 			recipientEmail: "recipient@linklocal.supme.ru",
 			subject:        "Test message",
 			// one part always add new line
-			html: testHtml + "\n",
+			html:        testHtml + "\n",
 			htmlRelated: []string{"testdata/knwoman.png", "testdata/prwoman.png"},
 		},
 

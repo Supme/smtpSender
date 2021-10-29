@@ -47,7 +47,7 @@ func TestDelimitWriter_Write(t *testing.T) {
 		if file.IsDir() {
 			continue
 		}
-		f, err := os.Open(filepath.Join(testfolder,file.Name()))
+		f, err := os.Open(filepath.Join(testfolder, file.Name()))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,7 +66,7 @@ func TestDelimitWriter_Write(t *testing.T) {
 
 		dec := base64.NewDecoder(base64.StdEncoding, b64buf)
 
-		_, err = f.Seek(0,0)
+		_, err = f.Seek(0, 0)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -55,9 +55,9 @@ type Builder struct {
 }
 
 type builderDKIM struct {
-	domain     string
-	selector   string
-	privateKey []byte
+	domain         string
+	selector       string
+	privateKey     []byte
 	dkimSignMethod int
 }
 

@@ -28,6 +28,8 @@ type Email struct {
 	ResultFunc func(Result)
 	// WriteCloser email body data writer function
 	WriteCloser func(io.WriteCloser) error
+	// DontUseTLS STARTTLS off
+	DontUseTLS bool
 }
 
 // Result struct for return send emailField result
@@ -89,7 +91,7 @@ func (e *Email) send(auth smtp.Auth, client *smtp.Client) error {
 	var (
 		err error
 	)
-	if ok, _ := client.Extension("STARTTLS"); ok {
+	if ok, _ := client.Extension("STARTTLS"); ok && !e.DontUseTLS {
 		config := &tls.Config{ServerName: e.toDomain, InsecureSkipVerify: true}
 		if err = client.StartTLS(config); err != nil {
 			return err

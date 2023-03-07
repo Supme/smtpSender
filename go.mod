@@ -5,7 +5,7 @@ require (
 	github.com/emersion/go-msgauth v0.6.5
 	github.com/jhillyerd/enmime v0.9.2
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
+	golang.org/x/net v0.7.0
 )
 
 go 1.16
